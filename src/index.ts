@@ -1,0 +1,49 @@
+import { serve } from "@hono/node-server";
+import { type Context,Hono } from "hono";
+import { showRoutes } from "hono/dev";
+import { HTTPException } from "hono/http-exception";
+import { openAPIRouteHandler } from "hono-openapi";
+import { Scalar } from "@scalar/hono-api-reference";
+import departmentsRouter from "./router/departmentsRouter.js";
+
+const app = new Hono();
+
+app.get('/', (c: Context) => c.json({message:'running'}))
+
+app.route('api/departments',departmentsRouter)
+
+app.get(
+  "/openapi",
+  openAPIRouteHandler(app, {
+    documentation: {
+      info: {
+        title: "SciTimeTable API",
+        version: "1.0.0",
+        description: "master data api",
+      },
+      servers: [{ url: "http://localhost:3000", description: "Local Server" }],
+    },
+  })
+);
+
+app.get("/docs", Scalar({ url: "/openapi" }));
+
+showRoutes(app);
+
+app.onError((err, c) => {
+  console.error(err);
+  if (err instanceof HTTPException) {
+    return c.json({ error: err.message }, err.status);
+  }
+  return c.json({ error: "Internal server error" }, 500);
+});
+
+serve(
+  {
+    fetch: app.fetch,
+    port: 3000,
+  },
+  (info) => {
+    console.log(`Server is running on http://localhost:${info.port}`);
+  }
+);
