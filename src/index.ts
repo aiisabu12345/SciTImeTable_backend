@@ -5,12 +5,14 @@ import { HTTPException } from "hono/http-exception";
 import { openAPIRouteHandler } from "hono-openapi";
 import { Scalar } from "@scalar/hono-api-reference";
 import departmentsRouter from "./router/departmentsRouter.js";
+import programsRouter from "./router/programsRouter.js";
 
 const app = new Hono();
 
 app.get('/', (c: Context) => c.json({message:'running'}))
 
 app.route('api/departments',departmentsRouter)
+app.route('api/programs',programsRouter)
 
 app.get(
   "/openapi",
