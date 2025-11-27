@@ -1,18 +1,24 @@
 import { serve } from "@hono/node-server";
-import { type Context,Hono } from "hono";
+import { type Context, Hono } from "hono";
 import { showRoutes } from "hono/dev";
 import { HTTPException } from "hono/http-exception";
 import { openAPIRouteHandler } from "hono-openapi";
 import { Scalar } from "@scalar/hono-api-reference";
 import departmentsRouter from "./router/departmentsRouter.js";
 import programsRouter from "./router/programsRouter.js";
+import buildingsRouter from "./router/buildingsRouter.js";
+import roomsRouter from "./router/roomsRouter.js";
+import roomTypesRouter from "./router/roomTypesRouter.js";
 
 const app = new Hono();
 
-app.get('/', (c: Context) => c.json({message:'running'}))
+app.get("/", (c: Context) => c.json({ message: "running" }));
 
-app.route('api/departments',departmentsRouter)
-app.route('api/programs',programsRouter)
+app.route("api/buildings", buildingsRouter);
+app.route("api/departments", departmentsRouter);
+app.route("api/programs", programsRouter);
+app.route("api/rooms", roomsRouter);
+app.route('api/room_types', roomTypesRouter)
 
 app.get(
   "/openapi",

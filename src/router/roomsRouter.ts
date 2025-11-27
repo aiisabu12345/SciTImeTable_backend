@@ -12,34 +12,39 @@ const connectionString: any = process.env.DATABASE_URL;
 const client = postgres(connectionString, { prepare: false });
 const db = drizzle(client, { schema, logger: true });
 
-const departmentsRouter = new Hono();
+const roomsRouter = new Hono();
 
-const departmentSchema = V.object({
+const roomSchema = V.object({
   id: V.number(),
-  code: V.string(),
-  name_th: V.string(),
-  name_en: V.string(),
   created_at: V.string(),
   updated_at: V.string(),
+  name: V.string(),
+  type: V.string(),
+  capacity: V.pipe(
+    V.number(),
+    V.minValue(0, "capacity must be a positive value.")
+  ),
+  building_id: V.number(),
 });
 
-const inputDepartmentSchema = V.pick(departmentSchema, [
-  "name_th",
-  "name_en",
-  "code",
+const inputRoomSchema = V.pick(roomSchema, [
+  "name",
+  "type",
+  "capacity",
+  "building_id",
 ]);
 
-const inputDepartmentValidator = validator("json", inputDepartmentSchema);
+const inputRoomValidator = validator("json", inputRoomSchema);
 
-departmentsRouter.get(
+roomsRouter.get(
   "/",
   describeRoute({
-    description: "Fetch all departments",
+    description: "Fetch all rooms",
     responses: {
       200: {
-        description: "List of departments",
+        description: "List of rooms",
         content: {
-          "application/json": { schema: resolver(V.array(departmentSchema)) },
+          "application/json": { schema: resolver(V.array(roomSchema)) },
         },
       },
     },
@@ -52,7 +57,7 @@ departmentsRouter.get(
 
     const data = await db
       .select()
-      .from(schema.departmentsTable)
+      .from(schema.roomsTable)
       .limit(limit)
       .offset(offset);
 
@@ -60,13 +65,13 @@ departmentsRouter.get(
   }
 );
 
-departmentsRouter.post(
+roomsRouter.post(
   "/",
   describeRoute({
-    description: "add department",
+    description: "add room",
     responses: {
       200: {
-        description: "added department",
+        description: "added room",
         content: {
           "application/json": {
             schema: resolver(V.object({ message: V.string() })),
@@ -74,7 +79,7 @@ departmentsRouter.post(
         },
       },
       400: {
-        description: "Duplicate department",
+        description: "Duplicate room",
         content: {
           "application/json": {
             schema: resolver(V.object({ message: V.string() })),
@@ -83,34 +88,35 @@ departmentsRouter.post(
       },
     },
   }),
-  inputDepartmentValidator,
+  inputRoomValidator,
   async (c: Context) => {
     const data = (await (c.req as any).valid("json")) as V.InferOutput<
-      typeof inputDepartmentSchema
+      typeof inputRoomSchema
     >;
     const [exists] = await db
       .select()
-      .from(schema.departmentsTable)
-      .where(eq(schema.departmentsTable.code, data.code));
+      .from(schema.roomsTable)
+      .where(eq(schema.roomsTable.name, data.name));
     if (exists)
-      throw new HTTPException(400, { message: "department already exists" });
-    await db.insert(schema.departmentsTable).values({
-      name_th: data.name_th,
-      name_en: data.name_en,
-      code: data.code,
+      throw new HTTPException(400, { message: "room already exists" });
+    await db.insert(schema.roomsTable).values({
+      name: data.name,
+      type: data.type,
+      capacity: data.capacity,
+      building_id: data.building_id,
       updated_at: new Date(),
     });
     return c.json({ message: "added successfully" });
   }
 );
 
-departmentsRouter.put(
+roomsRouter.put(
   "/:id",
   describeRoute({
-    description: "edit department",
+    description: "edit room",
     responses: {
       200: {
-        description: "edited department",
+        description: "edited room",
         content: {
           "application/json": {
             schema: resolver(V.object({ message: V.string() })),
@@ -118,7 +124,7 @@ departmentsRouter.put(
         },
       },
       400: {
-        description: "duplicate department code",
+        description: "bad request",
         content: {
           "application/json": {
             schema: resolver(V.object({ message: V.string() })),
@@ -126,7 +132,7 @@ departmentsRouter.put(
         },
       },
       404: {
-        description: "not found department",
+        description: "not found room",
         content: {
           "application/json": {
             schema: resolver(V.object({ message: V.string() })),
@@ -135,57 +141,59 @@ departmentsRouter.put(
       },
     },
   }),
-  inputDepartmentValidator,
+  inputRoomValidator,
   async (c: Context) => {
     const id = Number(c.req.param("id"));
     const data = (await (c.req as any).valid("json")) as V.InferOutput<
-      typeof inputDepartmentSchema
+      typeof inputRoomSchema
     >;
-    const { code, name_th, name_en } = data;
+    const { name, type, capacity, building_id } = data;
+
+    if (capacity < 0)
+      throw new HTTPException(400, {
+        message: "capacity must be a positive value",
+      });
 
     const [exists] = await db
       .select()
-      .from(schema.departmentsTable)
-      .where(eq(schema.departmentsTable.id, id))
+      .from(schema.roomsTable)
+      .where(eq(schema.roomsTable.id, id))
       .limit(1);
-    if (!exists)
-      throw new HTTPException(404, { message: "department not found" });
+    if (!exists) throw new HTTPException(404, { message: "room not found" });
 
-    const [codeExists] = await db
+    const [nameExists] = await db
       .select()
-      .from(schema.departmentsTable)
+      .from(schema.roomsTable)
       .where(
-        and(
-          eq(schema.departmentsTable.code, code),
-          ne(schema.departmentsTable.id, id)
-        )
+        and(eq(schema.roomsTable.name, name), ne(schema.roomsTable.id, id))
       )
       .limit(1);
-    if (codeExists)
-      throw new HTTPException(400, { message: "code already exists" });
+    if (nameExists)
+      throw new HTTPException(400, { message: "name already exists" });
 
     const updated = await db
-      .update(schema.departmentsTable)
+      .update(schema.roomsTable)
       .set({
-        code,
-        name_th,
-        name_en,
+        name,
+        type,
+        capacity,
+        building_id,
         updated_at: new Date(),
       })
-      .where(eq(schema.departmentsTable.id, id))
+      .where(eq(schema.roomsTable.id, id))
       .returning();
 
-    return c.json({ message: "Department updated", department: updated });
+    return c.json({ message: "room updated", room: updated });
   }
 );
 
-departmentsRouter.delete(
+roomsRouter.delete(
   "/:id",
   describeRoute({
-    description: "delete department",
+    description: "delete room",
     responses: {
       200: {
-        description: "department deleted",
+        description: "room deleted",
         content: {
           "application/json": {
             schema: resolver(V.object({ message: V.string() })),
@@ -193,7 +201,7 @@ departmentsRouter.delete(
         },
       },
       404: {
-        description: "not found department",
+        description: "not found room",
         content: {
           "application/json": {
             schema: resolver(V.object({ message: V.string() })),
@@ -206,19 +214,16 @@ departmentsRouter.delete(
     const id = Number(c.req.param("id"));
     const [exists] = await db
       .select()
-      .from(schema.departmentsTable)
-      .where(eq(schema.departmentsTable.id, id))
+      .from(schema.roomsTable)
+      .where(eq(schema.roomsTable.id, id))
       .limit(1);
 
-    if (!exists)
-      throw new HTTPException(404, { message: "department not found" });
+    if (!exists) throw new HTTPException(404, { message: "room not found" });
 
-    await db
-      .delete(schema.departmentsTable)
-      .where(eq(schema.departmentsTable.id, id));
+    await db.delete(schema.roomsTable).where(eq(schema.roomsTable.id, id));
 
     return c.json({ message: "Deleted successfully" });
   }
 );
 
-export default departmentsRouter;
+export default roomsRouter;

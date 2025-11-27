@@ -20,7 +20,7 @@ export const programsTable = pgTable("programs", (t) => ({
   department_id: t.integer("department_id").notNull().references(() => departmentsTable.id)
 }));
 
-export const buildingTable = pgTable("building", (t) => ({
+export const buildingsTable = pgTable("buildings", (t) => ({
   id: t.integer("id").primaryKey().generatedAlwaysAsIdentity(),
   created_at: t.timestamp("created_at").notNull().defaultNow(),
   updated_at: t.timestamp("updated_at").notNull(),
@@ -31,9 +31,16 @@ export const buildingTable = pgTable("building", (t) => ({
 export const roomsTable = pgTable("rooms", (t) => ({
     id: t.integer("id").primaryKey().generatedAlwaysAsIdentity(),
     created_at: t.timestamp("created_at").notNull().defaultNow(),
-    updated_at: timestamp("updated_at").notNull(),
-    name : t.text("name").notNull(),
+    updated_at: t.timestamp("updated_at").notNull(),
+    name : t.text("name").notNull().unique(),
     type : t.text("type").notNull(),
     capacity : t.integer("capacity").notNull(),
-    building_id: t.integer("building_id").notNull().references(() => buildingTable.id)
+    building_id: t.integer("building_id").notNull().references(() => buildingsTable.id)
 }));
+
+export const roomtypesTable = pgTable("room_types", (t) => ({
+    id: t.integer("id").primaryKey().generatedAlwaysAsIdentity(),
+    created_at: t.timestamp("created_at").notNull().defaultNow(),
+    updated_at: t.timestamp("updated_at").notNull(),
+    name: t.text("name").notNull()
+}))
