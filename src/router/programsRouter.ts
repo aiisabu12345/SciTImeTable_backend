@@ -1,4 +1,4 @@
-import { type Context, Hono } from "hono";
+import { Hono } from "hono";
 import "dotenv/config";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
@@ -6,7 +6,7 @@ import * as schema from "../db/schema.js";
 import { HTTPException } from "hono/http-exception";
 import * as V from "valibot";
 import { describeRoute, resolver, validator } from "hono-openapi";
-import { eq, and, ne } from "drizzle-orm";
+import { eq, and, ne, or } from "drizzle-orm";
 
 const connectionString: any = process.env.DATABASE_URL;
 const client = postgres(connectionString, { prepare: false });
@@ -16,21 +16,22 @@ const programsRouter = new Hono();
 
 const programSchema = V.object({
   id: V.number(),
-  code: V.string(),
   name_th: V.string(),
   name_en: V.string(),
   created_at: V.string(),
   updated_at: V.string(),
-  num_years: V.number(),
-  department_id: V.number()
+  num_years: V.pipe(
+    V.number(),
+    V.minValue(4, "Programs must have at least 4 academic years.")
+  ),
+  department_id: V.number(),
 });
 
 const inputprogramSchema = V.pick(programSchema, [
   "name_th",
   "name_en",
-  "code",
   "num_years",
-  "department_id"
+  "department_id",
 ]);
 
 const inputProgramValidator = validator("json", inputprogramSchema);
@@ -38,6 +39,7 @@ const inputProgramValidator = validator("json", inputprogramSchema);
 programsRouter.get(
   "/",
   describeRoute({
+    tags: ['programs'],
     description: "Fetch all programs",
     responses: {
       200: {
@@ -48,7 +50,7 @@ programsRouter.get(
       },
     },
   }),
-  async (c: Context) => {
+  async (c) => {
     const limit = Number(c.req.query("limit") ?? 10);
     const page = Number(c.req.query("page") ?? 1);
 
@@ -67,6 +69,7 @@ programsRouter.get(
 programsRouter.post(
   "/",
   describeRoute({
+    tags: ['programs'],
     description: "add program",
     responses: {
       200: {
@@ -88,23 +91,24 @@ programsRouter.post(
     },
   }),
   inputProgramValidator,
-  async (c: Context) => {
-    const data = (await (c.req as any).valid("json")) as V.InferOutput<
-      typeof inputprogramSchema
-    >;
+  async (c) => {
+    const data = await c.req.valid("json");
     const [exists] = await db
       .select()
       .from(schema.programsTable)
-      .where(eq(schema.programsTable.code, data.code));
+      .where(
+        or(
+          eq(schema.programsTable.name_en, data.name_en),
+          eq(schema.programsTable.name_th, data.name_th)
+        )
+      );
     if (exists)
       throw new HTTPException(400, { message: "program already exists" });
     await db.insert(schema.programsTable).values({
       name_th: data.name_th,
       name_en: data.name_en,
-      code: data.code,
       num_years: data.num_years,
       department_id: data.department_id,
-      updated_at: new Date(),
     });
     return c.json({ message: "added successfully" });
   }
@@ -113,6 +117,7 @@ programsRouter.post(
 programsRouter.put(
   "/:id",
   describeRoute({
+    tags: ['programs'],
     description: "edit program",
     responses: {
       200: {
@@ -142,43 +147,41 @@ programsRouter.put(
     },
   }),
   inputProgramValidator,
-  async (c: Context) => {
+  async (c) => {
     const id = Number(c.req.param("id"));
-    const data = (await (c.req as any).valid("json")) as V.InferOutput<
-      typeof inputprogramSchema
-    >;
-    const { code, name_th, name_en, num_years, department_id } = data;
+    const data = await c.req.valid("json");
+    const { name_th, name_en, num_years, department_id } = data;
 
     const [exists] = await db
       .select()
       .from(schema.programsTable)
       .where(eq(schema.programsTable.id, id))
       .limit(1);
-    if (!exists)
-      throw new HTTPException(404, { message: "program not found" });
+    if (!exists) throw new HTTPException(404, { message: "program not found" });
 
-    const [codeExists] = await db
+    const [nameExists] = await db
       .select()
       .from(schema.programsTable)
       .where(
         and(
-          eq(schema.programsTable.code, code),
+          or(
+            eq(schema.programsTable.name_en, data.name_en),
+            eq(schema.programsTable.name_th, data.name_th)
+          ),
           ne(schema.programsTable.id, id)
         )
       )
       .limit(1);
-    if (codeExists)
-      throw new HTTPException(400, { message: "code already exists" });
+    if (nameExists)
+      throw new HTTPException(400, { message: "name already exists" });
 
     const updated = await db
       .update(schema.programsTable)
       .set({
-        code,
         name_th,
         name_en,
         num_years,
         department_id,
-        updated_at: new Date(),
       })
       .where(eq(schema.programsTable.id, id))
       .returning();
@@ -190,6 +193,7 @@ programsRouter.put(
 programsRouter.delete(
   "/:id",
   describeRoute({
+    tags: ['programs'],
     description: "delete program",
     responses: {
       200: {
@@ -210,7 +214,7 @@ programsRouter.delete(
       },
     },
   }),
-  async (c: Context) => {
+  async (c) => {
     const id = Number(c.req.param("id"));
     const [exists] = await db
       .select()
@@ -218,8 +222,7 @@ programsRouter.delete(
       .where(eq(schema.programsTable.id, id))
       .limit(1);
 
-    if (!exists)
-      throw new HTTPException(404, { message: "program not found" });
+    if (!exists) throw new HTTPException(404, { message: "program not found" });
 
     await db
       .delete(schema.programsTable)

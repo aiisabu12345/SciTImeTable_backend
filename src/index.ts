@@ -1,5 +1,5 @@
 import { serve } from "@hono/node-server";
-import { type Context, Hono } from "hono";
+import { Hono } from "hono";
 import { showRoutes } from "hono/dev";
 import { HTTPException } from "hono/http-exception";
 import { openAPIRouteHandler } from "hono-openapi";
@@ -12,7 +12,7 @@ import roomTypesRouter from "./router/roomTypesRouter.js";
 
 const app = new Hono();
 
-app.get("/", (c: Context) => c.json({ message: "running" }));
+app.get("/", (c) => c.json({ message: "running" }));
 
 app.route("api/buildings", buildingsRouter);
 app.route("api/departments", departmentsRouter);

@@ -1,46 +1,44 @@
 import { pgTable, text, integer, timestamp } from "drizzle-orm/pg-core";
 
-export const departmentsTable = pgTable("departments", (t) => ({
-  id: t.integer("id").primaryKey().generatedAlwaysAsIdentity(),
-  created_at: t.timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-  updated_at: t.timestamp("updated_at", { withTimezone: true }).notNull(),
-  name_th: t.text("name_th").notNull(),
-  name_en: t.text("name_en").notNull(),
-  code: t.text("code").notNull()
+export const departmentsTable = pgTable("departments",({
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  name_th: text("name_th").notNull(),
+  name_en: text("name_en").notNull(),
 }));
 
-export const programsTable = pgTable("programs", (t) => ({
-  id: t.integer("id").primaryKey().generatedAlwaysAsIdentity(),
-  created_at: t.timestamp("created_at").notNull().defaultNow(),
-  updated_at: t.timestamp("updated_at").notNull(),
-  name_th: t.text("name_th").notNull(),
-  name_en: t.text("name_en").notNull(),
-  code: t.text("code").notNull(),
-  num_years: t.integer("num_years").notNull(),
-  department_id: t.integer("department_id").notNull().references(() => departmentsTable.id)
+export const programsTable = pgTable("programs",({
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  created_at: timestamp("created_at").notNull().defaultNow(),
+  updated_at: timestamp("updated_at").notNull().defaultNow(),
+  name_th: text("name_th").notNull(),
+  name_en: text("name_en").notNull(),
+  num_years: integer("num_years").notNull(),
+  department_id: integer("department_id").notNull().references(() => departmentsTable.id)
 }));
 
-export const buildingsTable = pgTable("buildings", (t) => ({
-  id: t.integer("id").primaryKey().generatedAlwaysAsIdentity(),
-  created_at: t.timestamp("created_at").notNull().defaultNow(),
-  updated_at: t.timestamp("updated_at").notNull(),
-  code: t.text("code").notNull().unique(),
-  name: t.text("name").notNull(),
+export const buildingsTable = pgTable("buildings",({
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  created_at: timestamp("created_at").notNull().defaultNow(),
+  updated_at: timestamp("updated_at").notNull().defaultNow(),
+  code: text("code").notNull().unique(),
+  name: text("name").notNull(),
 }));
 
-export const roomsTable = pgTable("rooms", (t) => ({
-    id: t.integer("id").primaryKey().generatedAlwaysAsIdentity(),
-    created_at: t.timestamp("created_at").notNull().defaultNow(),
-    updated_at: t.timestamp("updated_at").notNull(),
-    name : t.text("name").notNull().unique(),
-    type : t.text("type").notNull(),
-    capacity : t.integer("capacity").notNull(),
-    building_id: t.integer("building_id").notNull().references(() => buildingsTable.id)
+export const roomsTable = pgTable("rooms",({
+    id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+    updated_at: timestamp("updated_at").notNull().defaultNow(),
+    name : text("name").notNull(),
+    type : text("type").notNull(),
+    capacity : integer("capacity").notNull(),
+    building_id: integer("building_id").notNull().references(() => buildingsTable.id)
 }));
 
-export const roomtypesTable = pgTable("room_types", (t) => ({
-    id: t.integer("id").primaryKey().generatedAlwaysAsIdentity(),
-    created_at: t.timestamp("created_at").notNull().defaultNow(),
-    updated_at: t.timestamp("updated_at").notNull(),
-    name: t.text("name").notNull()
+export const roomtypesTable = pgTable("room_types",({
+    id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+    updated_at: timestamp("updated_at").notNull().defaultNow(),
+    name: text("name").notNull()
 }))

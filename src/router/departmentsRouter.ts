@@ -1,4 +1,4 @@
-import { type Context, Hono } from "hono";
+import { Hono } from "hono";
 import "dotenv/config";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
@@ -6,7 +6,7 @@ import * as schema from "../db/schema.js";
 import { HTTPException } from "hono/http-exception";
 import * as V from "valibot";
 import { describeRoute, resolver, validator } from "hono-openapi";
-import { eq, and, ne } from "drizzle-orm";
+import { eq, and, ne, or } from "drizzle-orm";
 
 const connectionString: any = process.env.DATABASE_URL;
 const client = postgres(connectionString, { prepare: false });
@@ -16,24 +16,20 @@ const departmentsRouter = new Hono();
 
 const departmentSchema = V.object({
   id: V.number(),
-  code: V.string(),
   name_th: V.string(),
   name_en: V.string(),
   created_at: V.string(),
   updated_at: V.string(),
 });
 
-const inputDepartmentSchema = V.pick(departmentSchema, [
-  "name_th",
-  "name_en",
-  "code",
-]);
+const inputDepartmentSchema = V.pick(departmentSchema, ["name_th", "name_en"]);
 
 const inputDepartmentValidator = validator("json", inputDepartmentSchema);
 
 departmentsRouter.get(
   "/",
   describeRoute({
+    tags: ['departments'],
     description: "Fetch all departments",
     responses: {
       200: {
@@ -44,7 +40,7 @@ departmentsRouter.get(
       },
     },
   }),
-  async (c: Context) => {
+  async (c) => {
     const limit = Number(c.req.query("limit") ?? 10);
     const page = Number(c.req.query("page") ?? 1);
 
@@ -63,6 +59,7 @@ departmentsRouter.get(
 departmentsRouter.post(
   "/",
   describeRoute({
+    tags: ['departments'],
     description: "add department",
     responses: {
       200: {
@@ -84,21 +81,23 @@ departmentsRouter.post(
     },
   }),
   inputDepartmentValidator,
-  async (c: Context) => {
-    const data = (await (c.req as any).valid("json")) as V.InferOutput<
-      typeof inputDepartmentSchema
-    >;
+  async (c) => {
+    const data = await c.req.valid("json");
     const [exists] = await db
       .select()
       .from(schema.departmentsTable)
-      .where(eq(schema.departmentsTable.code, data.code));
+      .where(
+        or(
+          eq(schema.departmentsTable.name_en, data.name_en),
+          eq(schema.departmentsTable.name_th, data.name_th)
+        )
+      );
+
     if (exists)
       throw new HTTPException(400, { message: "department already exists" });
     await db.insert(schema.departmentsTable).values({
       name_th: data.name_th,
       name_en: data.name_en,
-      code: data.code,
-      updated_at: new Date(),
     });
     return c.json({ message: "added successfully" });
   }
@@ -107,18 +106,11 @@ departmentsRouter.post(
 departmentsRouter.put(
   "/:id",
   describeRoute({
+    tags: ['departments'],
     description: "edit department",
     responses: {
       200: {
         description: "edited department",
-        content: {
-          "application/json": {
-            schema: resolver(V.object({ message: V.string() })),
-          },
-        },
-      },
-      400: {
-        description: "duplicate department code",
         content: {
           "application/json": {
             schema: resolver(V.object({ message: V.string() })),
@@ -136,12 +128,10 @@ departmentsRouter.put(
     },
   }),
   inputDepartmentValidator,
-  async (c: Context) => {
+  async (c) => {
     const id = Number(c.req.param("id"));
-    const data = (await (c.req as any).valid("json")) as V.InferOutput<
-      typeof inputDepartmentSchema
-    >;
-    const { code, name_th, name_en } = data;
+    const data = await c.req.valid("json");
+    const { name_th, name_en } = data;
 
     const [exists] = await db
       .select()
@@ -151,26 +141,11 @@ departmentsRouter.put(
     if (!exists)
       throw new HTTPException(404, { message: "department not found" });
 
-    const [codeExists] = await db
-      .select()
-      .from(schema.departmentsTable)
-      .where(
-        and(
-          eq(schema.departmentsTable.code, code),
-          ne(schema.departmentsTable.id, id)
-        )
-      )
-      .limit(1);
-    if (codeExists)
-      throw new HTTPException(400, { message: "code already exists" });
-
     const updated = await db
       .update(schema.departmentsTable)
       .set({
-        code,
         name_th,
         name_en,
-        updated_at: new Date(),
       })
       .where(eq(schema.departmentsTable.id, id))
       .returning();
@@ -182,6 +157,7 @@ departmentsRouter.put(
 departmentsRouter.delete(
   "/:id",
   describeRoute({
+    tags: ['departments'],
     description: "delete department",
     responses: {
       200: {
@@ -202,7 +178,7 @@ departmentsRouter.delete(
       },
     },
   }),
-  async (c: Context) => {
+  async (c) => {
     const id = Number(c.req.param("id"));
     const [exists] = await db
       .select()

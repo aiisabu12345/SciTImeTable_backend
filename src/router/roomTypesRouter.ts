@@ -1,4 +1,4 @@
-import { type Context, Hono } from "hono";
+import { Hono } from "hono";
 import "dotenv/config";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
@@ -23,6 +23,7 @@ const roomtypesSchema = V.object({
 roomTypesRouter.get(
     '/',
     describeRoute({
+        tags: ['roomTypes'],
         description: "Fetch all room types",
         responses: {
             200: {
@@ -33,7 +34,7 @@ roomTypesRouter.get(
             },
         },
     }),
-    async (c: Context) => {
+    async (c) => {
         const data = await db
             .select()
             .from(schema.roomtypesTable)

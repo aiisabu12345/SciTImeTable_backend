@@ -1,4 +1,4 @@
-import { type Context, Hono } from "hono";
+import { Hono } from "hono";
 import "dotenv/config";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
@@ -39,6 +39,7 @@ const inputRoomValidator = validator("json", inputRoomSchema);
 roomsRouter.get(
   "/",
   describeRoute({
+    tags: ['rooms'],
     description: "Fetch all rooms",
     responses: {
       200: {
@@ -49,7 +50,7 @@ roomsRouter.get(
       },
     },
   }),
-  async (c: Context) => {
+  async (c) => {
     const limit = Number(c.req.query("limit") ?? 10);
     const page = Number(c.req.query("page") ?? 1);
 
@@ -68,6 +69,7 @@ roomsRouter.get(
 roomsRouter.post(
   "/",
   describeRoute({
+    tags: ['rooms'],
     description: "add room",
     responses: {
       200: {
@@ -89,10 +91,8 @@ roomsRouter.post(
     },
   }),
   inputRoomValidator,
-  async (c: Context) => {
-    const data = (await (c.req as any).valid("json")) as V.InferOutput<
-      typeof inputRoomSchema
-    >;
+  async (c) => {
+    const data = await c.req.valid("json")
     const [exists] = await db
       .select()
       .from(schema.roomsTable)
@@ -104,7 +104,6 @@ roomsRouter.post(
       type: data.type,
       capacity: data.capacity,
       building_id: data.building_id,
-      updated_at: new Date(),
     });
     return c.json({ message: "added successfully" });
   }
@@ -113,6 +112,7 @@ roomsRouter.post(
 roomsRouter.put(
   "/:id",
   describeRoute({
+    tags: ['rooms'],
     description: "edit room",
     responses: {
       200: {
@@ -142,11 +142,9 @@ roomsRouter.put(
     },
   }),
   inputRoomValidator,
-  async (c: Context) => {
+  async (c) => {
     const id = Number(c.req.param("id"));
-    const data = (await (c.req as any).valid("json")) as V.InferOutput<
-      typeof inputRoomSchema
-    >;
+    const data = await c.req.valid("json")
     const { name, type, capacity, building_id } = data;
 
     if (capacity < 0)
@@ -178,7 +176,6 @@ roomsRouter.put(
         type,
         capacity,
         building_id,
-        updated_at: new Date(),
       })
       .where(eq(schema.roomsTable.id, id))
       .returning();
@@ -190,6 +187,7 @@ roomsRouter.put(
 roomsRouter.delete(
   "/:id",
   describeRoute({
+    tags: ['rooms'],
     description: "delete room",
     responses: {
       200: {
@@ -210,7 +208,7 @@ roomsRouter.delete(
       },
     },
   }),
-  async (c: Context) => {
+  async (c) => {
     const id = Number(c.req.param("id"));
     const [exists] = await db
       .select()

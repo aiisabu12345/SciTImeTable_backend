@@ -1,4 +1,4 @@
-import { type Context, Hono } from "hono";
+import { Hono } from "hono";
 import "dotenv/config";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
@@ -24,6 +24,7 @@ const buildingSchema = V.object({
 buildingsRouter.get(
     '/',
     describeRoute({
+        tags: ['buildings'],
         description: "Fetch all building",
         responses: {
             200: {
@@ -34,7 +35,7 @@ buildingsRouter.get(
             },
         },
     }),
-    async (c: Context) => {
+    async (c) => {
         const data = await db
             .select()
             .from(schema.buildingsTable)
