@@ -22,6 +22,11 @@ const departmentSchema = V.object({
   updated_at: V.string(),
 });
 
+const querySchema = V.object({
+  limit: V.optional(V.string(), "10"),
+  page: V.optional(V.string(), "1"),
+});
+
 const inputDepartmentSchema = V.pick(departmentSchema, ["name_th", "name_en"]);
 
 const inputDepartmentValidator = validator("json", inputDepartmentSchema);
@@ -31,6 +36,9 @@ departmentsRouter.get(
   describeRoute({
     tags: ['departments'],
     description: "Fetch all departments",
+    request:{
+      query: querySchema,
+    },
     responses: {
       200: {
         description: "List of departments",
@@ -40,6 +48,8 @@ departmentsRouter.get(
       },
     },
   }),
+  validator('query', querySchema)
+  ,
   async (c) => {
     const limit = Number(c.req.query("limit") ?? 10);
     const page = Number(c.req.query("page") ?? 1);

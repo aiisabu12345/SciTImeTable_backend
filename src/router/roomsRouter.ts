@@ -27,6 +27,11 @@ const roomSchema = V.object({
   building_id: V.number(),
 });
 
+const querySchema = V.object({
+  limit: V.optional(V.string(), "10"),
+  page: V.optional(V.string(), "1"),
+});
+
 const inputRoomSchema = V.pick(roomSchema, [
   "name",
   "type",
@@ -50,6 +55,7 @@ roomsRouter.get(
       },
     },
   }),
+  validator('query', querySchema),
   async (c) => {
     const limit = Number(c.req.query("limit") ?? 10);
     const page = Number(c.req.query("page") ?? 1);

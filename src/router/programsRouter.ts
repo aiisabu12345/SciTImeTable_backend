@@ -27,6 +27,11 @@ const programSchema = V.object({
   department_id: V.number(),
 });
 
+const querySchema = V.object({
+  limit: V.optional(V.string(), "10"),
+  page: V.optional(V.string(), "1"),
+});
+
 const inputprogramSchema = V.pick(programSchema, [
   "name_th",
   "name_en",
@@ -50,6 +55,7 @@ programsRouter.get(
       },
     },
   }),
+  validator('query', querySchema),
   async (c) => {
     const limit = Number(c.req.query("limit") ?? 10);
     const page = Number(c.req.query("page") ?? 1);
