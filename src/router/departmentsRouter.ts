@@ -36,9 +36,6 @@ departmentsRouter.get(
   describeRoute({
     tags: ['departments'],
     description: "Fetch all departments",
-    request:{
-      query: querySchema,
-    },
     responses: {
       200: {
         description: "List of departments",
@@ -48,8 +45,7 @@ departmentsRouter.get(
       },
     },
   }),
-  validator('query', querySchema)
-  ,
+  validator('query', querySchema),
   async (c) => {
     const limit = Number(c.req.query("limit") ?? 10);
     const page = Number(c.req.query("page") ?? 1);
