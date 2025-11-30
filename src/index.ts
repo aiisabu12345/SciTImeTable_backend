@@ -41,7 +41,7 @@ app.get(
       servers: [
         {
           url: "https://sci-time-table-backend.vercel.app",
-          description: "Local Server",
+          description: "Cloud Server",
         },
       ],
     },
@@ -66,6 +66,6 @@ serve(
     port: 3000,
   },
   (info) => {
-    console.log(`Server is running on http://localhost:${info.port}`);
+    console.log(`Server is running`);
   }
 );
