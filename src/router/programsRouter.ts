@@ -6,7 +6,7 @@ import * as schema from "../db/schema.js";
 import { HTTPException } from "hono/http-exception";
 import * as V from "valibot";
 import { describeRoute, resolver, validator } from "hono-openapi";
-import { eq, and, ne, or } from "drizzle-orm";
+import { eq, and, ne, or, sql } from "drizzle-orm";
 
 const connectionString: any = process.env.DATABASE_URL;
 const client = postgres(connectionString, { prepare: false });
@@ -44,7 +44,7 @@ const inputProgramValidator = validator("json", inputprogramSchema);
 programsRouter.get(
   "/",
   describeRoute({
-    tags: ['programs'],
+    tags: ["programs"],
     description: "Fetch all programs",
     responses: {
       200: {
@@ -55,7 +55,7 @@ programsRouter.get(
       },
     },
   }),
-  validator('query', querySchema),
+  validator("query", querySchema),
   async (c) => {
     const limit = Number(c.req.query("limit") ?? 10);
     const page = Number(c.req.query("page") ?? 1);
@@ -72,10 +72,48 @@ programsRouter.get(
   }
 );
 
+programsRouter.get(
+  "/:search",
+  describeRoute({
+    tags: ["programs"],
+    description: "Fetch programs with search",
+    responses: {
+      200: {
+        description: "List of programs",
+        content: {
+          "application/json": { schema: resolver(V.array(programSchema)) },
+        },
+      },
+    },
+  }),
+  validator("query", querySchema),
+  async (c) => {
+    const limit = Number(c.req.query("limit") ?? 10);
+    const page = Number(c.req.query("page") ?? 1);
+
+    const offset = (page - 1) * limit;
+
+    const search = c.req.param("search");
+    const data = await db
+      .select()
+      .from(schema.programsTable)
+      .where(
+        sql`
+          similarity(${schema.programsTable.name_th}, ${search}) > 0.2 OR
+          similarity(${schema.programsTable.name_en}, ${search}) > 0.2
+        `
+      )
+      .limit(limit)
+      .offset(offset);
+
+    return c.json(data);
+  }
+);
+
 programsRouter.post(
   "/",
   describeRoute({
-    tags: ['programs'],
+    tags: ["programs"],
     description: "add program",
     responses: {
       200: {
@@ -123,7 +161,7 @@ programsRouter.post(
 programsRouter.put(
   "/:id",
   describeRoute({
-    tags: ['programs'],
+    tags: ["programs"],
     description: "edit program",
     responses: {
       200: {
@@ -199,7 +237,7 @@ programsRouter.put(
 programsRouter.delete(
   "/:id",
   describeRoute({
-    tags: ['programs'],
+    tags: ["programs"],
     description: "delete program",
     responses: {
       200: {

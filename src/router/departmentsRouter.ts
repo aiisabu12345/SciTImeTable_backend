@@ -6,7 +6,7 @@ import * as schema from "../db/schema.js";
 import { HTTPException } from "hono/http-exception";
 import * as V from "valibot";
 import { describeRoute, resolver, validator } from "hono-openapi";
-import { eq, and, ne, or } from "drizzle-orm";
+import { eq, and, ne, or, sql } from "drizzle-orm";
 
 const connectionString: any = process.env.DATABASE_URL;
 const client = postgres(connectionString, { prepare: false });
@@ -34,7 +34,7 @@ const inputDepartmentValidator = validator("json", inputDepartmentSchema);
 departmentsRouter.get(
   "/",
   describeRoute({
-    tags: ['departments'],
+    tags: ["departments"],
     description: "Fetch all departments",
     responses: {
       200: {
@@ -45,7 +45,7 @@ departmentsRouter.get(
       },
     },
   }),
-  validator('query', querySchema),
+  validator("query", querySchema),
   async (c) => {
     const limit = Number(c.req.query("limit") ?? 10);
     const page = Number(c.req.query("page") ?? 1);
@@ -62,10 +62,48 @@ departmentsRouter.get(
   }
 );
 
+departmentsRouter.get(
+  "/:search",
+  describeRoute({
+    tags: ["departments"],
+    description: "Fetch departments with search",
+    responses: {
+      200: {
+        description: "List of departments",
+        content: {
+          "application/json": { schema: resolver(V.array(departmentSchema)) },
+        },
+      },
+    },
+  }),
+  validator("query", querySchema),
+  async (c) => {
+    const limit = Number(c.req.query("limit") ?? 10);
+    const page = Number(c.req.query("page") ?? 1);
+
+    const offset = (page - 1) * limit;
+
+    const search = c.req.param("search");
+    const data = await db
+      .select()
+      .from(schema.departmentsTable)
+      .where(
+        sql`
+          similarity(${schema.departmentsTable.name_th}, ${search}) > 0.2 OR
+          similarity(${schema.departmentsTable.name_en}, ${search}) > 0.2
+        `
+      )
+      .limit(limit)
+      .offset(offset);
+
+    return c.json(data);
+  }
+);
+
 departmentsRouter.post(
   "/",
   describeRoute({
-    tags: ['departments'],
+    tags: ["departments"],
     description: "add department",
     responses: {
       200: {
@@ -112,7 +150,7 @@ departmentsRouter.post(
 departmentsRouter.put(
   "/:id",
   describeRoute({
-    tags: ['departments'],
+    tags: ["departments"],
     description: "edit department",
     responses: {
       200: {
@@ -163,7 +201,7 @@ departmentsRouter.put(
 departmentsRouter.delete(
   "/:id",
   describeRoute({
-    tags: ['departments'],
+    tags: ["departments"],
     description: "delete department",
     responses: {
       200: {
