@@ -29,7 +29,7 @@ app.get(
         version: "1.0.0",
         description: "master data api",
       },
-      servers: [{ url: "http://localhost:3000", description: "Local Server" }],
+      servers: [{ url: "https://sci-time-table-backend.vercel.app", description: "Local Server" }],
     },
   })
 );
