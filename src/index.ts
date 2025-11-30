@@ -14,11 +14,19 @@ const app = new Hono();
 
 app.get("/", (c) => c.json({ message: "running" }));
 
+app.use(
+  "*",
+  cors({
+    origin: "*",
+    allowMethods: ["GET", "POST", "PUT", "DELETE"],
+  })
+);
+
 app.route("api/buildings", buildingsRouter);
 app.route("api/departments", departmentsRouter);
 app.route("api/programs", programsRouter);
 app.route("api/rooms", roomsRouter);
-app.route('api/room_types', roomTypesRouter)
+app.route("api/room_types", roomTypesRouter);
 
 app.get(
   "/openapi",
@@ -29,7 +37,12 @@ app.get(
         version: "1.0.0",
         description: "master data api",
       },
-      servers: [{ url: "https://sci-time-table-backend.vercel.app", description: "Local Server" }],
+      servers: [
+        {
+          url: "https://sci-time-table-backend.vercel.app",
+          description: "Local Server",
+        },
+      ],
     },
   })
 );
