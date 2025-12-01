@@ -32,6 +32,12 @@ const querySchema = V.object({
   page: V.optional(V.string(), "1"),
 });
 
+const searchQuerySchema = V.object({
+  q: V.optional(V.string(),""),
+  limit: V.optional(V.string(), "10"),
+  page: V.optional(V.string(), "1"),
+});
+
 const inputprogramSchema = V.pick(programSchema, [
   "name_th",
   "name_en",
@@ -74,7 +80,7 @@ programsRouter.get(
 );
 
 programsRouter.get(
-  "/:search",
+  "/search",
   describeRoute({
     tags: ["programs"],
     description: "Fetch programs with search",
@@ -87,27 +93,27 @@ programsRouter.get(
       },
     },
   }),
-  validator("query", querySchema),
+  validator("query", searchQuerySchema),
   async (c) => {
     const limit = Number(c.req.query("limit") ?? 10);
     const page = Number(c.req.query("page") ?? 1);
 
     const offset = (page - 1) * limit;
 
-    const search = c.req.param("search");
+    const q = c.req.query("q") ?? ""
     const data = await db
       .select()
       .from(schema.programsTable)
       .where(
         sql`
-          similarity(${schema.programsTable.name_th}, ${search}) > 0.1 OR
-          similarity(${schema.programsTable.name_en}, ${search}) > 0.1
+          similarity(${schema.programsTable.name_th}, ${q}) > 0.1 OR
+          similarity(${schema.programsTable.name_en}, ${q}) > 0.1
         `
       )
       .orderBy(sql`
         GREATEST(
-          similarity(${schema.programsTable.name_th}, ${search}::text),
-          similarity(${schema.programsTable.name_en}, ${search}::text)
+          similarity(${schema.programsTable.name_th}, ${q}::text),
+          similarity(${schema.programsTable.name_en}, ${q}::text)
         ) DESC
       `)
       .limit(limit)

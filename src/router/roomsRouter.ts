@@ -32,6 +32,12 @@ const querySchema = V.object({
   page: V.optional(V.string(), "1"),
 });
 
+const searchQuerySchema = V.object({
+  q: V.optional(V.string(),""),
+  limit: V.optional(V.string(), "10"),
+  page: V.optional(V.string(), "1"),
+});
+
 const inputRoomSchema = V.pick(roomSchema, [
   "name",
   "type",
@@ -74,7 +80,7 @@ roomsRouter.get(
 );
 
 roomsRouter.get(
-  "/:search",
+  "/search",
   describeRoute({
     tags: ["rooms"],
     description: "Fetch rooms with search",
@@ -87,25 +93,25 @@ roomsRouter.get(
       },
     },
   }),
-  validator("query", querySchema),
+  validator("query", searchQuerySchema),
   async (c) => {
     const limit = Number(c.req.query("limit") ?? 10);
     const page = Number(c.req.query("page") ?? 1);
 
     const offset = (page - 1) * limit;
 
-    const search = c.req.param("search");
+    const q = c.req.query("q");
     const data = await db
       .select()
       .from(schema.roomsTable)
       .where(
         sql`
-          similarity(${schema.roomsTable.name}, ${search}) > 0.1
+          similarity(${schema.roomsTable.name}, ${q}) > 0.1
         `
       )
       .orderBy(sql`
         GREATEST(
-            similarity(${schema.roomsTable.name}, ${search}::text)
+            similarity(${schema.roomsTable.name}, ${q}::text)
         ) DESC
       `)
       .limit(limit)

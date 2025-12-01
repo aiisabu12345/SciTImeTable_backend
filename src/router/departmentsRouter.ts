@@ -27,6 +27,12 @@ const querySchema = V.object({
   page: V.optional(V.string(), "1"),
 });
 
+const searchQuerySchema = V.object({
+  q: V.optional(V.string(),""),
+  limit: V.optional(V.string(), "10"),
+  page: V.optional(V.string(), "1"),
+});
+
 const inputDepartmentSchema = V.pick(departmentSchema, ["name_th", "name_en"]);
 
 const inputDepartmentValidator = validator("json", inputDepartmentSchema);
@@ -64,7 +70,7 @@ departmentsRouter.get(
 );
 
 departmentsRouter.get(
-  "/:search",
+  "/search",
   describeRoute({
     tags: ["departments"],
     description: "Fetch departments with search",
@@ -77,28 +83,28 @@ departmentsRouter.get(
       },
     },
   }),
-  validator("query", querySchema),
+  validator("query", searchQuerySchema),
   async (c) => {
     const limit = Number(c.req.query("limit") ?? 10);
     const page = Number(c.req.query("page") ?? 1);
 
     const offset = (page - 1) * limit;
 
-    const search = c.req.param("search");
+    const q = c.req.query("q") ?? "";
     const data = await db
       .select()
       .from(schema.departmentsTable)
       .where(
         sql`
-          similarity(${schema.departmentsTable.name_th}, ${search}) > 0.1 OR
-          similarity(${schema.departmentsTable.name_en}, ${search}) > 0.1
+          similarity(${schema.departmentsTable.name_th}, ${q}) > 0.1 OR
+          similarity(${schema.departmentsTable.name_en}, ${q}) > 0.1
           
         `
       )
       .orderBy(sql`
         GREATEST(
-          similarity(${schema.departmentsTable.name_th}, ${search}::text),
-          similarity(${schema.departmentsTable.name_en}, ${search}::text)
+          similarity(${schema.departmentsTable.name_th}, ${q}::text),
+          similarity(${schema.departmentsTable.name_en}, ${q}::text)
         ) DESC
       `)
       .limit(limit)
