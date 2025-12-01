@@ -6,7 +6,7 @@ import * as schema from "../db/schema.js";
 import { HTTPException } from "hono/http-exception";
 import * as V from "valibot";
 import { describeRoute, resolver, validator } from "hono-openapi";
-import { eq, and, ne, sql } from "drizzle-orm";
+import { eq, and, ne, sql, desc } from "drizzle-orm";
 
 const connectionString: any = process.env.DATABASE_URL;
 const client = postgres(connectionString, { prepare: false });
@@ -65,6 +65,7 @@ roomsRouter.get(
     const data = await db
       .select()
       .from(schema.roomsTable)
+      .orderBy(desc(schema.roomsTable.created_at))
       .limit(limit)
       .offset(offset);
 
@@ -99,9 +100,14 @@ roomsRouter.get(
       .from(schema.roomsTable)
       .where(
         sql`
-          similarity(${schema.roomsTable.name}, ${search}) > 0.2
+          similarity(${schema.roomsTable.name}, ${search}) > 0.1
         `
       )
+      .orderBy(sql`
+        GREATEST(
+            similarity(${schema.roomsTable.name}, ${search}::text)
+        ) DESC
+      `)
       .limit(limit)
       .offset(offset);
 

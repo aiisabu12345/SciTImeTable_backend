@@ -6,7 +6,7 @@ import * as schema from "../db/schema.js";
 import { HTTPException } from "hono/http-exception";
 import * as V from "valibot";
 import { describeRoute, resolver, validator } from "hono-openapi";
-import { eq, and, ne, or, sql } from "drizzle-orm";
+import { eq, and, ne, or, sql, desc, asc } from "drizzle-orm";
 
 const connectionString: any = process.env.DATABASE_URL;
 const client = postgres(connectionString, { prepare: false });
@@ -55,6 +55,7 @@ departmentsRouter.get(
     const data = await db
       .select()
       .from(schema.departmentsTable)
+      .orderBy(desc(schema.departmentsTable.created_at))
       .limit(limit)
       .offset(offset);
 
@@ -89,10 +90,17 @@ departmentsRouter.get(
       .from(schema.departmentsTable)
       .where(
         sql`
-          similarity(${schema.departmentsTable.name_th}, ${search}) > 0.2 OR
-          similarity(${schema.departmentsTable.name_en}, ${search}) > 0.2
+          similarity(${schema.departmentsTable.name_th}, ${search}) > 0.1 OR
+          similarity(${schema.departmentsTable.name_en}, ${search}) > 0.1
+          
         `
       )
+      .orderBy(sql`
+        GREATEST(
+          similarity(${schema.departmentsTable.name_th}, ${search}::text),
+          similarity(${schema.departmentsTable.name_en}, ${search}::text)
+        ) DESC
+      `)
       .limit(limit)
       .offset(offset);
 

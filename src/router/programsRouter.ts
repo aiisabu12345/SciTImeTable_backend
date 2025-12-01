@@ -6,7 +6,7 @@ import * as schema from "../db/schema.js";
 import { HTTPException } from "hono/http-exception";
 import * as V from "valibot";
 import { describeRoute, resolver, validator } from "hono-openapi";
-import { eq, and, ne, or, sql } from "drizzle-orm";
+import { eq, and, ne, or, sql, desc } from "drizzle-orm";
 
 const connectionString: any = process.env.DATABASE_URL;
 const client = postgres(connectionString, { prepare: false });
@@ -65,6 +65,7 @@ programsRouter.get(
     const data = await db
       .select()
       .from(schema.programsTable)
+      .orderBy(desc(schema.programsTable.created_at))
       .limit(limit)
       .offset(offset);
 
@@ -99,10 +100,16 @@ programsRouter.get(
       .from(schema.programsTable)
       .where(
         sql`
-          similarity(${schema.programsTable.name_th}, ${search}) > 0.2 OR
-          similarity(${schema.programsTable.name_en}, ${search}) > 0.2
+          similarity(${schema.programsTable.name_th}, ${search}) > 0.1 OR
+          similarity(${schema.programsTable.name_en}, ${search}) > 0.1
         `
       )
+      .orderBy(sql`
+        GREATEST(
+          similarity(${schema.programsTable.name_th}, ${search}::text),
+          similarity(${schema.programsTable.name_en}, ${search}::text)
+        ) DESC
+      `)
       .limit(limit)
       .offset(offset);
 
