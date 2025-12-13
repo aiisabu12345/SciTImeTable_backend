@@ -14,11 +14,11 @@ const db = drizzle(client, { schema, logger: true });
 const buildingsRouter = new Hono();
 
 const buildingSchema = V.object({
-    id: V.number(),
+    id: V.string(),
     created_at: V.string(),
     updated_at: V.string(),
-    code: V.string(),
-    name: V.string(),
+    name_en: V.string(),
+    name_th: V.string(),
 });
 
 buildingsRouter.get(

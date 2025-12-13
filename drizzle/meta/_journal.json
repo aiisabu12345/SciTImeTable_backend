@@ -8,6 +8,20 @@
       "when": 1764406539933,
       "tag": "0000_sad_magus",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1765607134401,
+      "tag": "0001_smooth_lord_tyger",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1765608443769,
+      "tag": "0002_steep_romulus",
+      "breakpoints": true
     }
   ]
 }

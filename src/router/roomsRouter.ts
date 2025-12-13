@@ -15,7 +15,7 @@ const db = drizzle(client, { schema, logger: true });
 const roomsRouter = new Hono();
 
 const roomSchema = V.object({
-  id: V.number(),
+  id: V.string(),
   created_at: V.string(),
   updated_at: V.string(),
   name: V.string(),
@@ -24,7 +24,7 @@ const roomSchema = V.object({
     V.number(),
     V.minValue(0, "capacity must be a positive value.")
   ),
-  building_id: V.number(),
+  building_id: V.string(),
 });
 
 const querySchema = V.object({
@@ -155,6 +155,7 @@ roomsRouter.post(
     if (exists)
       throw new HTTPException(400, { message: "room already exists" });
     await db.insert(schema.roomsTable).values({
+      id: data.name + data.building_id,
       name: data.name,
       type: data.type,
       capacity: data.capacity,
@@ -198,7 +199,7 @@ roomsRouter.put(
   }),
   inputRoomValidator,
   async (c) => {
-    const id = Number(c.req.param("id"));
+    const id = c.req.param("id");
     const data = await c.req.valid("json")
     const { name, type, capacity, building_id } = data;
 
@@ -264,7 +265,7 @@ roomsRouter.delete(
     },
   }),
   async (c) => {
-    const id = Number(c.req.param("id"));
+    const id = c.req.param("id");
     const [exists] = await db
       .select()
       .from(schema.roomsTable)

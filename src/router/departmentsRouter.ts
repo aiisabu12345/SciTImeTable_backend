@@ -20,6 +20,7 @@ const departmentSchema = V.object({
   name_en: V.string(),
   created_at: V.string(),
   updated_at: V.string(),
+  code: V.string()
 });
 
 const querySchema = V.object({
@@ -33,7 +34,7 @@ const searchQuerySchema = V.object({
   page: V.optional(V.string(), "1"),
 });
 
-const inputDepartmentSchema = V.pick(departmentSchema, ["name_th", "name_en"]);
+const inputDepartmentSchema = V.pick(departmentSchema, ["name_th", "name_en", "code"]);
 
 const inputDepartmentValidator = validator("json", inputDepartmentSchema);
 
@@ -147,7 +148,8 @@ departmentsRouter.post(
       .where(
         or(
           eq(schema.departmentsTable.name_en, data.name_en),
-          eq(schema.departmentsTable.name_th, data.name_th)
+          eq(schema.departmentsTable.name_th, data.name_th),
+          eq(schema.departmentsTable.code, data.code)
         )
       );
 
@@ -156,6 +158,7 @@ departmentsRouter.post(
     await db.insert(schema.departmentsTable).values({
       name_th: data.name_th,
       name_en: data.name_en,
+      code: data.code
     });
     return c.json({ message: "added successfully" });
   }
@@ -189,7 +192,7 @@ departmentsRouter.put(
   async (c) => {
     const id = Number(c.req.param("id"));
     const data = await c.req.valid("json");
-    const { name_th, name_en } = data;
+    const { name_th, name_en, code } = data;
 
     const [exists] = await db
       .select()
@@ -204,6 +207,7 @@ departmentsRouter.put(
       .set({
         name_th,
         name_en,
+        code,
       })
       .where(eq(schema.departmentsTable.id, id))
       .returning();
