@@ -22,6 +22,41 @@
       "when": 1765608443769,
       "tag": "0002_steep_romulus",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1765802486474,
+      "tag": "0003_parallel_corsair",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1765805690402,
+      "tag": "0004_young_mentallo",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1765805741333,
+      "tag": "0005_certain_black_crow",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1765806408453,
+      "tag": "0006_mixed_baron_zemo",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1766590344695,
+      "tag": "0007_eminent_silhouette",
+      "breakpoints": true
     }
   ]
 }

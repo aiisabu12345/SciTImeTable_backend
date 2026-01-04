@@ -1,6 +1,6 @@
 import { serve } from "@hono/node-server";
 import { Hono } from "hono";
-import { cors } from 'hono/cors'
+import { cors } from "hono/cors";
 import { showRoutes } from "hono/dev";
 import { HTTPException } from "hono/http-exception";
 import { openAPIRouteHandler } from "hono-openapi";
@@ -10,6 +10,7 @@ import programsRouter from "./router/programsRouter.js";
 import buildingsRouter from "./router/buildingsRouter.js";
 import roomsRouter from "./router/roomsRouter.js";
 import roomTypesRouter from "./router/roomTypesRouter.js";
+import schedulesRouter from "./router/schedulesRouter.js";
 
 const app = new Hono();
 
@@ -28,6 +29,7 @@ app.route("api/departments", departmentsRouter);
 app.route("api/programs", programsRouter);
 app.route("api/rooms", roomsRouter);
 app.route("api/room_types", roomTypesRouter);
+app.route("api/schedules", schedulesRouter);
 
 app.get(
   "/openapi",
@@ -40,7 +42,7 @@ app.get(
       },
       servers: [
         {
-          url: "https://sci-time-table-backend.vercel.app",
+          url: "http://localhost:3000/",
           description: "Cloud Server",
         },
       ],
@@ -55,7 +57,7 @@ showRoutes(app);
 app.onError((err, c) => {
   console.error(err);
   if (err instanceof HTTPException) {
-    return c.json({ error: err.message }, err.status);
+    return c.json({ error: err.message, cause: err.cause }, err.status);
   }
   return c.json({ error: "Internal server error" }, 500);
 });
