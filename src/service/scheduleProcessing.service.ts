@@ -1,4 +1,4 @@
-import iconv from "iconv-lite";
+import * as iconv from "iconv-lite";
 import csv from "neat-csv";
 import { HTTPException } from "hono/http-exception";
 
@@ -53,7 +53,7 @@ const scheduleProcessing = async (
   const data: dataType[] = [];
   for (const f of csvFiles) {
     // let buffer = Buffer.from(await f.arrayBuffer());
-    let raw = iconv.decode(f, "utf-8");
+    let raw = (iconv as any).decode(f, "utf-8");
 
     raw = raw.replace(/^\uFEFF/, "");
 
