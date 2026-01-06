@@ -1,4 +1,4 @@
-import * as iconv from "iconv-lite";
+import iconv from "iconv-lite";
 import csv from "neat-csv";
 import { HTTPException } from "hono/http-exception";
 
