@@ -95,25 +95,23 @@ const inputSchedulesSchema1 = z.object({
 });
 
 const inputSchedulesSchema2 = z.object({
-  data: schedulesSchema.pick({
-    course_id: true,
-    program_id: true,
-    type: true,
-    group: true,
-    pair_group: true,
-    student_count: true,
-    lecturer: true,
-    day: true,
-    start_time: true,
-    end_time: true,
-    room_id: true,
-    mid_day: true,
-    mid_start_time: true,
-    mid_end_time: true,
-    final_day: true,
-    final_start_time: true,
-    final_end_time: true,
-  }),
+  course_id: z.string(),
+  program_id: z.number(),
+  type: z.string(),
+  group: z.number(),
+  pair_group: z.number(),
+  student_count: z.number(),
+  lecturer: z.string(),
+  day: z.string(),
+  start_time: z.string(),
+  end_time: z.string(),
+  room_id: z.string(),
+  mid_day: z.string(),
+  mid_start_time: z.string(),
+  mid_end_time: z.string(),
+  final_day: z.string(),
+  final_start_time: z.string(),
+  final_end_time: z.string(),
 });
 
 //for post
@@ -437,7 +435,7 @@ schedulesRouter.put(
       final_day,
       final_start_time,
       final_end_time,
-    } = payload.data;
+    } = payload;
 
     const [exists] = await db
       .select()
@@ -468,29 +466,29 @@ schedulesRouter.put(
       });
     }
 
-    const [duplicateGroup] = await db
-      .select()
-      .from(schema.schedulesTable)
-      .where(
-        and(
-          and(
-            eq(schema.schedulesTable.course_id, course_id),
-            or(
-              eq(schema.schedulesTable.group, group),
-              eq(schema.schedulesTable.group, pair_group),
-              eq(schema.schedulesTable.pair_group, pair_group),
-              eq(schema.schedulesTable.pair_group, group)
-            )
-          )
-        )
-      )
-      .limit(1);
+    // const [duplicateGroup] = await db
+    //   .select()
+    //   .from(schema.schedulesTable)
+    //   .where(
+    //     and(
+    //       and(
+    //         eq(schema.schedulesTable.course_id, course_id),
+    //         or(
+    //           eq(schema.schedulesTable.group, group),
+    //           eq(schema.schedulesTable.group, pair_group),
+    //           eq(schema.schedulesTable.pair_group, pair_group),
+    //           eq(schema.schedulesTable.pair_group, group)
+    //         )
+    //       )
+    //     )
+    //   )
+    //   .limit(1);
 
-    if (duplicateGroup) {
-      throw new HTTPException(409, {
-        message: `duplicate group with id:${duplicateGroup.id}`,
-      });
-    }
+    // if (duplicateGroup) {
+    //   throw new HTTPException(409, {
+    //     message: `duplicate group with id:${duplicateGroup.id}`,
+    //   });
+    // }
 
     const updated = await db
       .update(schema.schedulesTable)

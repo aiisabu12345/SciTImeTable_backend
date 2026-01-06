@@ -5,15 +5,30 @@ import * as schema from "../db/schema.js";
 import { eq, and } from "drizzle-orm";
 import { z } from "zod";
 import { describeRoute, resolver, validator } from "hono-openapi";
-import { createInsertSchema, createSelectSchema } from "drizzle-zod";
-import { selectCourseSchema, insertCourseSchema, updateCourseSchema } from "../db/schema.js";
+// import { createInsertSchema, createSelectSchema } from "drizzle-zod";
+// import { selectCourseSchema, insertCourseSchema, updateCourseSchema } from "../db/schema.js";
 // import { off } from "process";
 const connectionString = process.env.DATABASE_URL!;
 const client = postgres(connectionString, { prepare: false });
 const db = drizzle(client, { schema });
 
-const courseSelectSchema = createSelectSchema(schema.coursesTable);
-const courseInsertSchema = createInsertSchema(schema.coursesTable);
+// const courseSelectSchema = createSelectSchema(schema.coursesTable);
+// const courseInsertSchema = createInsertSchema(schema.coursesTable);
+
+const courseSchema = z.object({
+  id: z.string(),
+  name_en:z.string(),
+  name_th:z.string(),
+  credit:z.number(),
+  credit_l:z.number(),
+  credit_p:z.number(),
+  credit_s:z.number(),
+  status:z.string(),
+  academic_year:z.number(),
+  semester:z.number(),
+  updated_time: z.string(),
+  created_time: z.string()
+})
 
 const coursesRouter = new Hono();
 
@@ -25,7 +40,8 @@ coursesRouter.get(
     responses: {
       200: {
         description: "List of all courses",
-        content: { "application/json": { schema: resolver(z.array(selectCourseSchema)) } },
+        // content: { "application/json": { schema: resolver(z.array(selectCourseSchema)) } },
+        content: { "application/json": { schema: resolver(z.array(courseSchema)) } },
       },
     },
   }),
@@ -68,7 +84,8 @@ coursesRouter.get(
       200: {
         description: "List of active courses",
         content: {
-          "application/json": { schema: resolver(z.array(selectCourseSchema)) },
+          // "application/json": { schema: resolver(z.array(selectCourseSchema)) },
+          "application/json": { schema: resolver(z.array(courseSchema)) },
         },
       },
     },
@@ -86,7 +103,7 @@ coursesRouter.get(
 
 coursesRouter.post(
   '/',
-  validator('json', courseInsertSchema),
+  validator('json', courseSchema.omit({updated_time:true,created_time:true})),
   describeRoute({
     tags: ['Courses'],
     description: "Create new course",
@@ -94,7 +111,8 @@ coursesRouter.post(
       201: {
         description: "Course created",
         content: {
-          "application/json": { schema: resolver(courseSelectSchema) },
+          // "application/json": { schema: resolver(courseSelectSchema) },
+          "application/json": { schema: resolver(courseSchema) },
         },
       },
     },
@@ -124,14 +142,18 @@ coursesRouter.post(
 
 coursesRouter.put(
   '/:id',
-  validator('json', updateCourseSchema),
+  validator('json', courseSchema.omit({
+    updated_time:true,
+    created_time:true
+  })),
   describeRoute({
     tags: ['Courses'],
     description: "Update course details by ID",
     responses: {
       200: {
         description: "Course updated",
-        content: { "application/json": { schema: resolver(selectCourseSchema) } },
+        // content: { "application/json": { schema: resolver(selectCourseSchema) } },
+        content: { "application/json": { schema: resolver(courseSchema) } },
       },
     },
   }),
@@ -156,7 +178,7 @@ coursesRouter.put(
       .update(schema.coursesTable)
       .set({
         ...body,
-        updated_at: new Date()
+        // updated_at: new Date()
       })
       .where(eq(schema.coursesTable.id, id))
       .returning();
