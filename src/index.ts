@@ -44,7 +44,7 @@ app.get(
       },
       servers: [
         {
-          url: "http://localhost:3000/",
+          url: "https://sci-time-table-backend.vercel.app/",
           description: "Cloud Server",
         },
       ],
