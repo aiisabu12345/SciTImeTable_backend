@@ -11,6 +11,7 @@ import buildingsRouter from "./router/buildingsRouter.js";
 import roomsRouter from "./router/roomsRouter.js";
 import roomTypesRouter from "./router/roomTypesRouter.js";
 import schedulesRouter from "./router/schedulesRouter.js";
+import coursesRouter from "./router/coursesRouter.js";
 
 const app = new Hono();
 
@@ -30,6 +31,7 @@ app.route("api/programs", programsRouter);
 app.route("api/rooms", roomsRouter);
 app.route("api/room_types", roomTypesRouter);
 app.route("api/schedules", schedulesRouter);
+app.route("api/courses", coursesRouter);
 
 app.get(
   "/openapi",

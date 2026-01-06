@@ -1,12 +1,6 @@
-import {
-  pgTable,
-  text,
-  integer,
-  timestamp,
-  time,
-  date,
-} from "drizzle-orm/pg-core";
-import { string } from "valibot";
+import { pgTable, text, integer, timestamp, time, date } from "drizzle-orm/pg-core";
+import { createInsertSchema, createSelectSchema } from "drizzle-zod";
+import { z } from "zod";
 
 export const departmentsTable = pgTable("departments", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
@@ -80,6 +74,7 @@ export const coursesTable = pgTable("courses", {
   credit_l: integer("credit_l").notNull(),
   credit_p: integer("credit_p").notNull(),
   credit_s: integer("credit_s").notNull(),
+  status: text("status").notNull().default("active"),
   academic_year: integer("academic_year").notNull(),
   semester: integer("semester").notNull(),
 });
@@ -117,3 +112,13 @@ export const schedulesTable = pgTable("schedules", {
   final_start_time: time("final_start_time"),
   final_end_time: time("final_end_time"),
 });
+
+// Zod
+export const insertCourseSchema = createInsertSchema(coursesTable);
+export const insertScheduleSchema = createInsertSchema(schedulesTable);
+
+export const updateCourseSchema = insertCourseSchema.partial();
+export const updateScheduleSchema = insertScheduleSchema.partial();
+
+export const selectCourseSchema = createSelectSchema(coursesTable);
+export const selectScheduleSchema = createSelectSchema(schedulesTable);
