@@ -151,7 +151,7 @@ roomsRouter.post(
     const [exists] = await db
       .select()
       .from(schema.roomsTable)
-      .where(eq(schema.roomsTable.name, data.name));
+      .where(eq(schema.roomsTable.id, data.name + data.building_id));
     if (exists)
       throw new HTTPException(400, { message: "room already exists" });
     await db.insert(schema.roomsTable).values({

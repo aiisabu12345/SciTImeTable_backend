@@ -1,4 +1,4 @@
-import { pgTable, text, integer, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, integer, timestamp, time, date } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -85,24 +85,32 @@ export const schedulesTable = pgTable("schedules", {
   updated_at: timestamp("updated_at")
     .notNull()
     .$onUpdate(() => new Date()),
-  course_id: text("course_id").notNull().references(() => coursesTable.id),
-  status: text("status").notNull(),
-  program_id : integer("program_id").notNull().references(()=>programsTable.id),
+  course_id: text("course_id")
+    .notNull()
+    .references(() => coursesTable.id),
+  status: text("status")
+    .notNull()
+    .$onUpdate(() => "รอดำเนินการ"),
+  program_id: integer("program_id")
+    .notNull()
+    .references(() => programsTable.id),
   type: text("type").notNull(),
   group: integer("group").notNull(),
-  pair_group: integer("group").notNull(),
+  pair_group: integer("pair_group").notNull(),
   student_count: integer("student_count").notNull(),
   lecturer: text("lecturer").notNull(),
   day: text("day").notNull(),
-  start_time: text("start_time").notNull(),
-  end_time: text("end_time").notNull(),
-  room_id : text("room_id").notNull().references(()=>roomsTable.id),
-  mid_day : text("mid_day").notNull(),
-  mid_start_time: text("mid_start_time").notNull(),
-  mid_end_time: text("mid_end_time").notNull(),
-  final_day : text("final_day").notNull(),
-  final_start_time: text("final_start_time").notNull(),
-  final_end_time: text("final_end_time").notNull(),
+  start_time: time("start_time").notNull(),
+  end_time: time("end_time").notNull(),
+  room_id: text("room_id")
+    .notNull()
+    .references(() => roomsTable.id),
+  mid_day: date("mid_day"),
+  mid_start_time: time("mid_start_time"),
+  mid_end_time: time("mid_end_time"),
+  final_day: date("final_day"),
+  final_start_time: time("final_start_time"),
+  final_end_time: time("final_end_time"),
 });
 
 // Zod
