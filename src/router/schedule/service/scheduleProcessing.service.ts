@@ -92,21 +92,21 @@ const scheduleProcessing = async (
       row.mid_end_time = item["19"];
 
       row.mid_day = convertFormat(item["17"]);
-      if (row.mid_day === "") {
-        row.mid_day = null;
-        row.mid_start_time = null;
-        row.mid_end_time = null;
-      }
+      // if (row.mid_day === "") {
+      //   row.mid_day = null;
+      //   row.mid_start_time = null;
+      //   row.mid_end_time = null;
+      // }
 
       row.final_start_time = item["22"];
       row.final_end_time = item["23"];
 
       row.final_day = convertFormat(item["21"]);
-      if (row.final_day === "") {
-        row.final_day = null;
-        row.final_start_time = null;
-        row.final_end_time = null;
-      }
+      // if (row.final_day === "") {
+      //   row.final_day = null;
+      //   row.final_start_time = null;
+      //   row.final_end_time = null;
+      // }
       // try {
       //   const [duplicateTime] = await db
       //     .select({ id: schema.schedulesTable.id })

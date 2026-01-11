@@ -272,12 +272,12 @@ schedulesRouter.post(
         start_time: item.start_time,
         end_time: item.end_time,
         room_id: item.room_id,
-        mid_day: item.mid_day,
-        mid_start_time: item.mid_start_time,
-        mid_end_time: item.mid_end_time,
-        final_day: item.final_day,
-        final_start_time: item.final_start_time,
-        final_end_time: item.final_end_time,
+        mid_day: item.mid_day===""?null:item.mid_day,
+        mid_start_time: item.mid_day===""?null:item.mid_start_time,
+        mid_end_time: item.mid_day===""?null:item.mid_end_time,
+        final_day: item.final_day===""?null:item.final_day,
+        final_start_time: item.final_day===""?null:item.final_start_time,
+        final_end_time: item.final_day===""?null:item.final_end_time,
       }))
     );
 
