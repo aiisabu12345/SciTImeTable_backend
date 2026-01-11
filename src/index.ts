@@ -10,7 +10,7 @@ import programsRouter from "./router/programsRouter.js";
 import buildingsRouter from "./router/buildingsRouter.js";
 import roomsRouter from "./router/roomsRouter.js";
 import roomTypesRouter from "./router/roomTypesRouter.js";
-import schedulesRouter from "./router/schedulesRouter.js";
+import schedulesRouter from "./router/schedule/schedulesRouter.js";
 import coursesRouter from "./router/coursesRouter.js";
 
 const app = new Hono();
@@ -45,6 +45,7 @@ app.get(
       servers: [
         {
           url: "https://sci-time-table-backend.vercel.app/",
+          // url: "http://localhost:3000/",
           description: "Cloud Server",
         },
       ],

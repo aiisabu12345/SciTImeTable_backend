@@ -37,47 +37,47 @@ async function main() {
 
   await db.insert(schema.departmentsTable).values([
     {
-      code: "idk",
+      code: "idk0",
       name_th: "ส่วนกลางคณะ",
       name_en: "Science Centre",
     },
     {
-      code: "idk",
+      code: "idk1",
       name_th: "ภาควิชาเคมี",
       name_en: "Department of Chemistry",
     },
     {
-      code: "idk",
+      code: "idk2",
       name_th: "ภาควิชาคณิตศาสตร์",
       name_en: "Department of Mathematics",
     },
     {
-      code: "idk",
+      code: "idk3",
       name_th: "ภาควิชาฟิสิกส์",
       name_en: "Department of Physics",
     },
     {
-      code: "idk",
+      code: "idk4",
       name_th: "ภาควิชาชีววิทยา",
       name_en: "Department of Biology",
     },
     {
-      code: "idk",
+      code: "idk5",
       name_th: "ภาควิชาวิทยาการคอมพิวเตอร์",
       name_en: "Department of Computer Science",
     },
     {
-      code: "idk",
+      code: "idk6",
       name_th: "ภาควิชาสถิติ",
       name_en: "Department of Statistics",
     },
     {
-      code: "idk",
+      code: "idk7",
       name_th: "ศูนย์เครื่องมือวิทยาศาสตร์",
       name_en: "Scientific Instruments Center",
     },
     {
-      code: "idk",
+      code: "idk8",
       name_th: "ศูนย์วิเคราะห์ข้อมูลอัจฉริยะ",
       name_en: "KMITL Digital Analytics and Intelligence Center (KDAI)",
     },

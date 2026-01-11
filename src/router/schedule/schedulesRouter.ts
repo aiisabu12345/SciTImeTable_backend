@@ -2,13 +2,15 @@ import { Hono } from "hono";
 import "dotenv/config";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-import * as schema from "../db/schema.js";
+import * as schema from "../../db/schema.js";
 import { HTTPException } from "hono/http-exception";
 import * as z from "zod";
 import { describeRoute, resolver, validator } from "hono-openapi";
 import { eq, and, ne, or, sql, desc, asc, lt, gt } from "drizzle-orm";
-import xlsx_to_csv_arraybuffer from "../service/xlsx_to_csv_arraybuffer.service.js";
-import scheduleProcessing from "../service/scheduleProcessing.service.js";
+import xlsx_to_csv_arraybuffer from "./service/xlsx_to_csv_arraybuffer.service.js";
+import scheduleProcessing from "./service/scheduleProcessing.service.js";
+import mapScheduleWithRoomId from "./service/mapScheduleWithRoomId.service.js";
+import type { dataType } from "./types/schedulesTypes.js";
 
 const connectionString: any = process.env.DATABASE_URL;
 const client = postgres(connectionString, { prepare: false });
@@ -36,12 +38,12 @@ const schedulesSchema = z.object({
   start_time: z.string(),
   end_time: z.string(),
   room_id: z.string(),
-  mid_day: z.string(),
-  mid_start_time: z.string(),
-  mid_end_time: z.string(),
-  final_day: z.string(),
-  final_start_time: z.string(),
-  final_end_time: z.string(),
+  mid_day: z.string().optional(),
+  mid_start_time: z.string().optional(),
+  mid_end_time: z.string().optional(),
+  final_day: z.string().optional(),
+  final_start_time: z.string().optional(),
+  final_end_time: z.string().optional(),
 });
 
 const schedulesSchemaForReadTable = z.object({
@@ -108,15 +110,6 @@ const inputSchedulesSchema2 = z.object({
   final_start_time: z.string(),
   final_end_time: z.string(),
 });
-
-//for post
-const inputSchedulesValidator1 = validator("json", inputSchedulesSchema1);
-
-//for put
-const inputSchedulesValidator2 = validator("json", inputSchedulesSchema2);
-
-//for readfile
-const inputFileSchema = validator("form", fileSchema);
 
 schedulesRouter.get(
   "/:id",
@@ -218,35 +211,44 @@ schedulesRouter.post(
       },
     },
   }),
-  inputSchedulesValidator1,
+  validator("json", inputSchedulesSchema1),
   async (c) => {
     const payload = await c.req.valid("json");
     const conflict = [];
+
+    const scheduleData = await db
+      .select({
+        id: schema.schedulesTable.id,
+        room_id: schema.schedulesTable.room_id,
+        day: schema.schedulesTable.day,
+        start_time: schema.schedulesTable.start_time,
+        end_time: schema.schedulesTable.end_time,
+      })
+      .from(schema.schedulesTable);
+
+    //map schedule with room id
+    const scheduleIndexRoomId = await mapScheduleWithRoomId(scheduleData);
+
     for (const item of payload.data) {
-      const [timeConflict] = await db
-        .select({
-          id: schema.schedulesTable.id,
-        })
-        .from(schema.schedulesTable)
-        .where(
-          and(
-            eq(schema.schedulesTable.day, item.day),
-            eq(schema.schedulesTable.room_id, item.room_id),
-            and(
-              lt(schema.schedulesTable.start_time, item.end_time),
-              gt(schema.schedulesTable.end_time, item.start_time)
-            )
-          )
-        )
-        .limit(1);
+      const checkDuplicateTime = scheduleIndexRoomId.has(item.room_id)
+        ? scheduleIndexRoomId.get(item.room_id)
+        : [];
+      for (const r of checkDuplicateTime!) {
+        const condition1 =
+          r.room_id === item.room_id &&
+          r.day === item.day &&
+          r.start_time < item.end_time &&
+          r.end_time > item.start_time;
 
-      if (timeConflict) {
-        const dataConflict = {
-          data: item,
-          conflictWith: timeConflict.id,
-        };
+        if (condition1) {
+          const dataConflict = {
+            data: item,
+            conflictWith: r.id,
+          };
 
-        conflict.push(dataConflict);
+          conflict.push(dataConflict);
+          break;
+        }
       }
     }
 
@@ -311,7 +313,7 @@ schedulesRouter.post(
       },
     },
   }),
-  inputFileSchema,
+  validator("form", fileSchema),
   async (c) => {
     const form = await c.req.formData();
     const filesRaw = form.getAll("file") as File[];
@@ -343,27 +345,6 @@ schedulesRouter.post(
         end_time: schema.schedulesTable.end_time,
       })
       .from(schema.schedulesTable);
-
-    interface dataType {
-      course_id: string;
-      program_id: number;
-      type: string;
-      group: number;
-      pair_group: number;
-      student_count: number;
-      lecturer: string;
-      day: string;
-      start_time: string;
-      end_time: string;
-      room_id: string;
-      mid_day: string;
-      mid_start_time: string;
-      mid_end_time: string;
-      final_day: string;
-      final_start_time: string;
-      final_end_time: string;
-      problem: string[];
-    }
 
     //process csvbuffer to data
     const data: dataType[] = await scheduleProcessing(
@@ -408,7 +389,7 @@ schedulesRouter.put(
       },
     },
   }),
-  inputSchedulesValidator2,
+  validator("json", inputSchedulesSchema2),
   async (c) => {
     const id = Number(c.req.param("id"));
     const payload = await c.req.valid("json");
@@ -460,30 +441,6 @@ schedulesRouter.put(
         message: `duplicate time with id:${duplicateTime.id}`,
       });
     }
-
-    // const [duplicateGroup] = await db
-    //   .select()
-    //   .from(schema.schedulesTable)
-    //   .where(
-    //     and(
-    //       and(
-    //         eq(schema.schedulesTable.course_id, course_id),
-    //         or(
-    //           eq(schema.schedulesTable.group, group),
-    //           eq(schema.schedulesTable.group, pair_group),
-    //           eq(schema.schedulesTable.pair_group, pair_group),
-    //           eq(schema.schedulesTable.pair_group, group)
-    //         )
-    //       )
-    //     )
-    //   )
-    //   .limit(1);
-
-    // if (duplicateGroup) {
-    //   throw new HTTPException(409, {
-    //     message: `duplicate group with id:${duplicateGroup.id}`,
-    //   });
-    // }
 
     const updated = await db
       .update(schema.schedulesTable)

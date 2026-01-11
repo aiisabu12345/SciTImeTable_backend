@@ -1,58 +1,23 @@
 import iconv from "iconv-lite";
 import csv from "neat-csv";
 import { HTTPException } from "hono/http-exception";
-
-interface scheduleDataType {
-  id: number;
-  room_id: string;
-  day: string;
-  start_time: string;
-  end_time: string;
-}
-
-interface dataType {
-  course_id: string;
-  program_id: number;
-  type: string;
-  group: number;
-  pair_group: number;
-  student_count: number;
-  lecturer: string;
-  day: string;
-  start_time: string;
-  end_time: string;
-  room_id: string;
-  mid_day: string;
-  mid_start_time: string;
-  mid_end_time: string;
-  final_day: string;
-  final_start_time: string;
-  final_end_time: string;
-  problem: string[];
-}
-
-interface programDataType {
-  id: number;
-  name_th: string;
-}
+import mapScheduleWithRoomId from "./mapScheduleWithRoomId.service.js";
+import type {
+  scheduleDataType,
+  dataType,
+  programDataType,
+} from "../types/schedulesTypes.js";
 
 const scheduleProcessing = async (
   programData: programDataType[],
   scheduleData: scheduleDataType[],
   csvFiles: ArrayBuffer[]
 ) => {
-  const scheduleIndexRoomId = new Map<string, scheduleDataType[]>();
-
-  for (const row of scheduleData) {
-    if (!scheduleIndexRoomId.has(row.room_id)) {
-      scheduleIndexRoomId.set(row.room_id, []);
-    }
-    scheduleIndexRoomId.get(row.room_id)!.push(row);
-  }
+  //map scheduleData with room id
+  const scheduleIndexRoomId = await mapScheduleWithRoomId(scheduleData);
 
   const data: dataType[] = [];
   for (const f of csvFiles) {
-    // let buffer = Buffer.from(await f.arrayBuffer());
     let raw = (iconv as any).decode(f, "utf-8");
 
     raw = raw.replace(/^\uFEFF/, "");
@@ -122,16 +87,26 @@ const scheduleProcessing = async (
         );
       };
 
-      row.mid_day = convertFormat(item["17"]);
-
+      // mid and final can be null
       row.mid_start_time = item["18"];
       row.mid_end_time = item["19"];
 
-      row.final_day = convertFormat(item["21"]);
+      row.mid_day = convertFormat(item["17"]);
+      if (row.mid_day === "") {
+        row.mid_day = null;
+        row.mid_start_time = null;
+        row.mid_end_time = null;
+      }
 
       row.final_start_time = item["22"];
       row.final_end_time = item["23"];
 
+      row.final_day = convertFormat(item["21"]);
+      if (row.final_day === "") {
+        row.final_day = null;
+        row.final_start_time = null;
+        row.final_end_time = null;
+      }
       // try {
       //   const [duplicateTime] = await db
       //     .select({ id: schema.schedulesTable.id })
@@ -154,59 +129,55 @@ const scheduleProcessing = async (
       // } catch (err) {
       //   console.log(err);
       // }
-
-      // try {
-      //   const [duplicateGroup] = await db
-      //     .select({ id: schema.schedulesTable.id })
-      //     .from(schema.schedulesTable)
-      //     .where(
-      //       and(
-      //         and(
-      //           eq(schema.schedulesTable.course_id, row.course_id),
-      //           or(
-      //             eq(schema.schedulesTable.group, row.group),
-      //             eq(schema.schedulesTable.group, row.pair_group),
-      //             eq(schema.schedulesTable.pair_group, row.pair_group),
-      //             eq(schema.schedulesTable.pair_group, row.group)
-      //           )
-      //         )
-      //       )
-      //     )
-      //     .limit(1);
-
-      //   if (duplicateGroup) {
-      //     row.problem.push(`duplicate group with id:${duplicateGroup.id}`);
-      //   }
-      // } catch (err) {
-      //   console.log(err);
-      // }
       const checkDuplicateTime = scheduleIndexRoomId.has(row.room_id)
         ? scheduleIndexRoomId.get(row.room_id)
         : [];
       for (const r of checkDuplicateTime!) {
-        const condition =
+        const condition1 =
           r.room_id === row.room_id &&
           r.day === row.day &&
           r.start_time < row.end_time &&
           r.end_time > row.start_time;
 
-        if (condition) {
-          row.problem.push(`duplicate time with id:${r.id}`);
+        if (condition1) {
+          if (r.id < 0) {
+            row.problem.push(`duplicate time with some row in excel`);
+          } else {
+            row.problem.push(`duplicate time with id:${r.id}`);
+          }
           break;
         }
       }
 
-      for (let j = 0; j < data.length; j++) {
-        const condition2 =
-          data[j].room_id === row.room_id &&
-          data[j].day === row.day &&
-          data[j].start_time < row.end_time &&
-          data[j].end_time > row.start_time;
+      const thisSchedule: scheduleDataType = {
+        id: -1,
+        room_id: "",
+        day: "",
+        start_time: "",
+        end_time: "",
+      };
 
-        if (condition2) {
-          row.problem.push(`duplicate time with some row in excel`);
-        }
+      thisSchedule.room_id = row.room_id;
+      thisSchedule.day = row.day;
+      thisSchedule.start_time = row.start_time;
+      thisSchedule.end_time = row.end_time;
+
+      if (!scheduleIndexRoomId.has(row.room_id)) {
+        scheduleIndexRoomId.set(row.room_id, []);
       }
+      scheduleIndexRoomId.get(row.room_id)!.push(thisSchedule);
+
+      // for (let j = 0; j < data.length; j++) {
+      //   const condition2 =
+      //     data[j].room_id === row.room_id &&
+      //     data[j].day === row.day &&
+      //     data[j].start_time < row.end_time &&
+      //     data[j].end_time > row.start_time;
+
+      //   if (condition2) {
+      //     row.problem.push(`duplicate time with some row in excel`);
+      //   }
+      // }
 
       data.push(row);
     }
