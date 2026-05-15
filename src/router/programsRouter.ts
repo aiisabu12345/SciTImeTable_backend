@@ -4,7 +4,7 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import * as schema from "../db/schema.js";
 import { HTTPException } from "hono/http-exception";
-import * as V from "valibot";
+import * as z from "zod";
 import { describeRoute, resolver, validator } from "hono-openapi";
 import { eq, and, ne, or, sql, desc } from "drizzle-orm";
 
@@ -14,36 +14,33 @@ const db = drizzle(client, { schema, logger: true });
 
 const programsRouter = new Hono();
 
-const programSchema = V.object({
-  id: V.number(),
-  name_th: V.string(),
-  name_en: V.string(),
-  created_at: V.string(),
-  updated_at: V.string(),
-  num_years: V.pipe(
-    V.number(),
-    V.minValue(4, "Programs must have at least 4 academic years.")
-  ),
-  department_id: V.number(),
+const programSchema = z.object({
+  id: z.number(),
+  name_th: z.string(),
+  name_en: z.string(),
+  created_at: z.string(),
+  updated_at: z.string(),
+  num_years: z.number().min(4, "Programs must have at least 4 academic years."),
+  department_id: z.number(),
 });
 
-const querySchema = V.object({
-  limit: V.optional(V.string(), "10"),
-  page: V.optional(V.string(), "1"),
+const querySchema = z.object({
+  limit: z.string().default("10").optional(),
+  page: z.string().default("1").optional(),
 });
 
-const searchQuerySchema = V.object({
-  q: V.optional(V.string(),""),
-  limit: V.optional(V.string(), "10"),
-  page: V.optional(V.string(), "1"),
+const searchQuerySchema = z.object({
+  q: z.string().default("").optional(),
+  limit: z.string().default("10").optional(),
+  page: z.string().default("1").optional(),
 });
 
-const inputprogramSchema = V.pick(programSchema, [
-  "name_th",
-  "name_en",
-  "num_years",
-  "department_id",
-]);
+const inputprogramSchema = programSchema.pick({
+  name_th: true,
+  name_en: true,
+  num_years: true,
+  department_id: true,
+});
 
 const inputProgramValidator = validator("json", inputprogramSchema);
 
@@ -56,7 +53,7 @@ programsRouter.get(
       200: {
         description: "List of programs",
         content: {
-          "application/json": { schema: resolver(V.array(programSchema)) },
+          "application/json": { schema: resolver(z.array(programSchema)) },
         },
       },
     },
@@ -76,7 +73,7 @@ programsRouter.get(
       .offset(offset);
 
     return c.json(data);
-  }
+  },
 );
 
 programsRouter.get(
@@ -88,7 +85,7 @@ programsRouter.get(
       200: {
         description: "List of programs",
         content: {
-          "application/json": { schema: resolver(V.array(programSchema)) },
+          "application/json": { schema: resolver(z.array(programSchema)) },
         },
       },
     },
@@ -100,7 +97,7 @@ programsRouter.get(
 
     const offset = (page - 1) * limit;
 
-    const q = c.req.query("q") ?? ""
+    const q = c.req.query("q") ?? "";
     const data = await db
       .select()
       .from(schema.programsTable)
@@ -108,19 +105,21 @@ programsRouter.get(
         sql`
           similarity(${schema.programsTable.name_th}, ${q}) > 0.1 OR
           similarity(${schema.programsTable.name_en}, ${q}) > 0.1
-        `
+        `,
       )
-      .orderBy(sql`
+      .orderBy(
+        sql`
         GREATEST(
           similarity(${schema.programsTable.name_th}, ${q}::text),
           similarity(${schema.programsTable.name_en}, ${q}::text)
         ) DESC
-      `)
+      `,
+      )
       .limit(limit)
       .offset(offset);
 
     return c.json(data);
-  }
+  },
 );
 
 programsRouter.post(
@@ -133,7 +132,7 @@ programsRouter.post(
         description: "added program",
         content: {
           "application/json": {
-            schema: resolver(V.object({ message: V.string() })),
+            schema: resolver(z.object({ message: z.string() })),
           },
         },
       },
@@ -141,7 +140,7 @@ programsRouter.post(
         description: "Duplicate program",
         content: {
           "application/json": {
-            schema: resolver(V.object({ message: V.string() })),
+            schema: resolver(z.object({ message: z.string() })),
           },
         },
       },
@@ -156,8 +155,8 @@ programsRouter.post(
       .where(
         or(
           eq(schema.programsTable.name_en, data.name_en),
-          eq(schema.programsTable.name_th, data.name_th)
-        )
+          eq(schema.programsTable.name_th, data.name_th),
+        ),
       );
     if (exists)
       throw new HTTPException(400, { message: "program already exists" });
@@ -168,7 +167,7 @@ programsRouter.post(
       department_id: data.department_id,
     });
     return c.json({ message: "added successfully" });
-  }
+  },
 );
 
 programsRouter.put(
@@ -181,7 +180,7 @@ programsRouter.put(
         description: "edited program",
         content: {
           "application/json": {
-            schema: resolver(V.object({ message: V.string() })),
+            schema: resolver(z.object({ message: z.string() })),
           },
         },
       },
@@ -189,7 +188,7 @@ programsRouter.put(
         description: "duplicate program code",
         content: {
           "application/json": {
-            schema: resolver(V.object({ message: V.string() })),
+            schema: resolver(z.object({ message: z.string() })),
           },
         },
       },
@@ -197,7 +196,7 @@ programsRouter.put(
         description: "not found program",
         content: {
           "application/json": {
-            schema: resolver(V.object({ message: V.string() })),
+            schema: resolver(z.object({ message: z.string() })),
           },
         },
       },
@@ -223,10 +222,10 @@ programsRouter.put(
         and(
           or(
             eq(schema.programsTable.name_en, data.name_en),
-            eq(schema.programsTable.name_th, data.name_th)
+            eq(schema.programsTable.name_th, data.name_th),
           ),
-          ne(schema.programsTable.id, id)
-        )
+          ne(schema.programsTable.id, id),
+        ),
       )
       .limit(1);
     if (nameExists)
@@ -244,7 +243,7 @@ programsRouter.put(
       .returning();
 
     return c.json({ message: "Program updated", program: updated });
-  }
+  },
 );
 
 programsRouter.delete(
@@ -257,7 +256,7 @@ programsRouter.delete(
         description: "program deleted",
         content: {
           "application/json": {
-            schema: resolver(V.object({ message: V.string() })),
+            schema: resolver(z.object({ message: z.string() })),
           },
         },
       },
@@ -265,7 +264,7 @@ programsRouter.delete(
         description: "not found program",
         content: {
           "application/json": {
-            schema: resolver(V.object({ message: V.string() })),
+            schema: resolver(z.object({ message: z.string() })),
           },
         },
       },
@@ -273,20 +272,20 @@ programsRouter.delete(
   }),
   async (c) => {
     const id = Number(c.req.param("id"));
-    const [exists] = await db
-      .select()
-      .from(schema.programsTable)
-      .where(eq(schema.programsTable.id, id))
-      .limit(1);
-
-    if (!exists) throw new HTTPException(404, { message: "program not found" });
-
-    await db
+    const result = await db
       .delete(schema.programsTable)
-      .where(eq(schema.programsTable.id, id));
+      .where(eq(schema.programsTable.id, id))
+      .returning();
 
-    return c.json({ message: "Deleted successfully" });
-  }
+    if (result.length === 0) {
+      return c.json({ error: "Program not found" }, 404);
+    }
+
+    return c.json({ 
+      message: "Deleted successfully", 
+      deletedItem: result[0] 
+    });
+  },
 );
 
 export default programsRouter;

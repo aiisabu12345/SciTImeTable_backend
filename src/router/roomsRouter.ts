@@ -4,7 +4,7 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import * as schema from "../db/schema.js";
 import { HTTPException } from "hono/http-exception";
-import * as V from "valibot";
+import * as z from "zod";
 import { describeRoute, resolver, validator } from "hono-openapi";
 import { eq, and, ne, sql, desc } from "drizzle-orm";
 
@@ -14,36 +14,28 @@ const db = drizzle(client, { schema, logger: true });
 
 const roomsRouter = new Hono();
 
-const roomSchema = V.object({
-  id: V.string(),
-  created_at: V.string(),
-  updated_at: V.string(),
-  name: V.string(),
-  type: V.string(),
-  capacity: V.pipe(
-    V.number(),
-    V.minValue(0, "capacity must be a positive value.")
-  ),
-  building_id: V.string(),
+const roomSchema = z.object({
+  id: z.string(),
+  created_at: z.string(),
+  updated_at: z.string(),
+  name: z.string(),
+  type: z.string(),
+  capacity: z.number().min(0,"capacity must be a positive value."),
+  building_id: z.string(),
 });
 
-const querySchema = V.object({
-  limit: V.optional(V.string(), "10"),
-  page: V.optional(V.string(), "1"),
+const querySchema = z.object({
+  limit: z.string().default("10").optional(),
+  page: z.string().default("1").optional(),
 });
 
-const searchQuerySchema = V.object({
-  q: V.optional(V.string(),""),
-  limit: V.optional(V.string(), "10"),
-  page: V.optional(V.string(), "1"),
+const searchQuerySchema = z.object({
+  q: z.string().default("").optional(),
+  limit: z.string().default("10").optional(),
+  page: z.string().default("1").optional(),
 });
 
-const inputRoomSchema = V.pick(roomSchema, [
-  "name",
-  "type",
-  "capacity",
-  "building_id",
-]);
+const inputRoomSchema = roomSchema.pick({name:true,type:true,capacity:true,building_id:true})
 
 const inputRoomValidator = validator("json", inputRoomSchema);
 
@@ -56,7 +48,7 @@ roomsRouter.get(
       200: {
         description: "List of rooms",
         content: {
-          "application/json": { schema: resolver(V.array(roomSchema)) },
+          "application/json": { schema: resolver(z.array(roomSchema)) },
         },
       },
     },
@@ -88,7 +80,7 @@ roomsRouter.get(
       200: {
         description: "List of rooms",
         content: {
-          "application/json": { schema: resolver(V.array(roomSchema)) },
+          "application/json": { schema: resolver(z.array(roomSchema)) },
         },
       },
     },
@@ -131,7 +123,7 @@ roomsRouter.post(
         description: "added room",
         content: {
           "application/json": {
-            schema: resolver(V.object({ message: V.string() })),
+            schema: resolver(z.object({ message: z.string() })),
           },
         },
       },
@@ -139,7 +131,7 @@ roomsRouter.post(
         description: "Duplicate room",
         content: {
           "application/json": {
-            schema: resolver(V.object({ message: V.string() })),
+            schema: resolver(z.object({ message: z.string() })),
           },
         },
       },
@@ -175,7 +167,7 @@ roomsRouter.put(
         description: "edited room",
         content: {
           "application/json": {
-            schema: resolver(V.object({ message: V.string() })),
+            schema: resolver(z.object({ message: z.string() })),
           },
         },
       },
@@ -183,7 +175,7 @@ roomsRouter.put(
         description: "bad request",
         content: {
           "application/json": {
-            schema: resolver(V.object({ message: V.string() })),
+            schema: resolver(z.object({ message: z.string() })),
           },
         },
       },
@@ -191,7 +183,7 @@ roomsRouter.put(
         description: "not found room",
         content: {
           "application/json": {
-            schema: resolver(V.object({ message: V.string() })),
+            schema: resolver(z.object({ message: z.string() })),
           },
         },
       },
@@ -250,7 +242,7 @@ roomsRouter.delete(
         description: "room deleted",
         content: {
           "application/json": {
-            schema: resolver(V.object({ message: V.string() })),
+            schema: resolver(z.object({ message: z.string() })),
           },
         },
       },
@@ -258,7 +250,7 @@ roomsRouter.delete(
         description: "not found room",
         content: {
           "application/json": {
-            schema: resolver(V.object({ message: V.string() })),
+            schema: resolver(z.object({ message: z.string() })),
           },
         },
       },
@@ -266,17 +258,20 @@ roomsRouter.delete(
   }),
   async (c) => {
     const id = c.req.param("id");
-    const [exists] = await db
-      .select()
-      .from(schema.roomsTable)
+
+    const result = await db
+      .delete(schema.roomsTable)
       .where(eq(schema.roomsTable.id, id))
-      .limit(1);
+      .returning()
 
-    if (!exists) throw new HTTPException(404, { message: "room not found" });
+    if(result.length === 0){
+      return c.json({error: "Room not found"}, 404)
+    }
 
-    await db.delete(schema.roomsTable).where(eq(schema.roomsTable.id, id));
-
-    return c.json({ message: "Deleted successfully" });
+    return c.json({ 
+      message: "Deleted successfully",
+      deletedItem: result[0]
+    });
   }
 );
 

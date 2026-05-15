@@ -4,9 +4,10 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import * as schema from "../db/schema.js";
 import { HTTPException } from "hono/http-exception";
-import * as V from "valibot";
+import * as z from "zod";
 import { describeRoute, resolver, validator } from "hono-openapi";
 import { eq, and, ne, or, sql, desc, asc } from "drizzle-orm";
+import { message } from "valibot";
 
 const connectionString: any = process.env.DATABASE_URL;
 const client = postgres(connectionString, { prepare: false });
@@ -14,27 +15,31 @@ const db = drizzle(client, { schema, logger: true });
 
 const departmentsRouter = new Hono();
 
-const departmentSchema = V.object({
-  id: V.number(),
-  name_th: V.string(),
-  name_en: V.string(),
-  created_at: V.string(),
-  updated_at: V.string(),
-  code: V.string()
+const departmentSchema = z.object({
+  id: z.number(),
+  name_th: z.string(),
+  name_en: z.string(),
+  created_at: z.string(),
+  updated_at: z.string(),
+  code: z.string(),
 });
 
-const querySchema = V.object({
-  limit: V.optional(V.string(), "10"),
-  page: V.optional(V.string(), "1"),
+const querySchema = z.object({
+  limit: z.string().default("10").optional(),
+  page: z.string().default("1").optional(),
 });
 
-const searchQuerySchema = V.object({
-  q: V.optional(V.string(),""),
-  limit: V.optional(V.string(), "10"),
-  page: V.optional(V.string(), "1"),
+const searchQuerySchema = z.object({
+  q: z.string().default("").optional(),
+  limit: z.string().default("10").optional(),
+  page: z.string().default("1").optional(),
 });
 
-const inputDepartmentSchema = V.pick(departmentSchema, ["name_th", "name_en", "code"]);
+const inputDepartmentSchema = departmentSchema.pick({
+  name_th: true,
+  name_en: true,
+  code: true,
+});
 
 const inputDepartmentValidator = validator("json", inputDepartmentSchema);
 
@@ -47,7 +52,7 @@ departmentsRouter.get(
       200: {
         description: "List of departments",
         content: {
-          "application/json": { schema: resolver(V.array(departmentSchema)) },
+          "application/json": { schema: resolver(z.array(departmentSchema)) },
         },
       },
     },
@@ -67,7 +72,7 @@ departmentsRouter.get(
       .offset(offset);
 
     return c.json(data);
-  }
+  },
 );
 
 departmentsRouter.get(
@@ -79,7 +84,7 @@ departmentsRouter.get(
       200: {
         description: "List of departments",
         content: {
-          "application/json": { schema: resolver(V.array(departmentSchema)) },
+          "application/json": { schema: resolver(z.array(departmentSchema)) },
         },
       },
     },
@@ -100,19 +105,21 @@ departmentsRouter.get(
           similarity(${schema.departmentsTable.name_th}, ${q}) > 0.1 OR
           similarity(${schema.departmentsTable.name_en}, ${q}) > 0.1
           
-        `
+        `,
       )
-      .orderBy(sql`
+      .orderBy(
+        sql`
         GREATEST(
           similarity(${schema.departmentsTable.name_th}, ${q}::text),
           similarity(${schema.departmentsTable.name_en}, ${q}::text)
         ) DESC
-      `)
+      `,
+      )
       .limit(limit)
       .offset(offset);
 
     return c.json(data);
-  }
+  },
 );
 
 departmentsRouter.post(
@@ -125,7 +132,7 @@ departmentsRouter.post(
         description: "added department",
         content: {
           "application/json": {
-            schema: resolver(V.object({ message: V.string() })),
+            schema: resolver(z.object({ message: z.string() })),
           },
         },
       },
@@ -133,7 +140,7 @@ departmentsRouter.post(
         description: "Duplicate department",
         content: {
           "application/json": {
-            schema: resolver(V.object({ message: V.string() })),
+            schema: resolver(z.object({ message: z.string() })),
           },
         },
       },
@@ -149,8 +156,8 @@ departmentsRouter.post(
         or(
           eq(schema.departmentsTable.name_en, data.name_en),
           eq(schema.departmentsTable.name_th, data.name_th),
-          eq(schema.departmentsTable.code, data.code)
-        )
+          eq(schema.departmentsTable.code, data.code),
+        ),
       );
 
     if (exists)
@@ -158,10 +165,10 @@ departmentsRouter.post(
     await db.insert(schema.departmentsTable).values({
       name_th: data.name_th,
       name_en: data.name_en,
-      code: data.code
+      code: data.code,
     });
     return c.json({ message: "added successfully" });
-  }
+  },
 );
 
 departmentsRouter.put(
@@ -174,7 +181,7 @@ departmentsRouter.put(
         description: "edited department",
         content: {
           "application/json": {
-            schema: resolver(V.object({ message: V.string() })),
+            schema: resolver(z.object({ message: z.string() })),
           },
         },
       },
@@ -182,7 +189,7 @@ departmentsRouter.put(
         description: "not found department",
         content: {
           "application/json": {
-            schema: resolver(V.object({ message: V.string() })),
+            schema: resolver(z.object({ message: z.string() })),
           },
         },
       },
@@ -213,7 +220,7 @@ departmentsRouter.put(
       .returning();
 
     return c.json({ message: "Department updated", department: updated });
-  }
+  },
 );
 
 departmentsRouter.delete(
@@ -226,7 +233,7 @@ departmentsRouter.delete(
         description: "department deleted",
         content: {
           "application/json": {
-            schema: resolver(V.object({ message: V.string() })),
+            schema: resolver(z.object({ message: z.string() })),
           },
         },
       },
@@ -234,7 +241,7 @@ departmentsRouter.delete(
         description: "not found department",
         content: {
           "application/json": {
-            schema: resolver(V.object({ message: V.string() })),
+            schema: resolver(z.object({ message: z.string() })),
           },
         },
       },
@@ -242,21 +249,20 @@ departmentsRouter.delete(
   }),
   async (c) => {
     const id = Number(c.req.param("id"));
-    const [exists] = await db
-      .select()
-      .from(schema.departmentsTable)
-      .where(eq(schema.departmentsTable.id, id))
-      .limit(1);
 
-    if (!exists)
-      throw new HTTPException(404, { message: "department not found" });
-
-    await db
+    const result = await db
       .delete(schema.departmentsTable)
-      .where(eq(schema.departmentsTable.id, id));
+      .where(eq(schema.departmentsTable.id, id))
+      .returning();
 
-    return c.json({ message: "Deleted successfully" });
-  }
+    if (result.length === 0) {
+      return c.json({ error: "Department not found" }, 404);
+    }
+    return c.json({
+      message: "Deleted successfully",
+      deletedItem: result[0],
+    });
+  },
 );
 
 export default departmentsRouter;

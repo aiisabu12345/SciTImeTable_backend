@@ -113,6 +113,10 @@ export const schedulesTable = pgTable("schedules", {
   final_end_time: time("final_end_time"),
 });
 
+export const UserTable = pgTable("Users", {
+
+})
+
 // Zod
 export const insertCourseSchema = createInsertSchema(coursesTable);
 export const insertScheduleSchema = createInsertSchema(schedulesTable);

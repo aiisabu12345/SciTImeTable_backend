@@ -495,19 +495,19 @@ schedulesRouter.delete(
   }),
   async (c) => {
     const id = Number(c.req.param("id"));
-    const [exists] = await db
-      .select()
-      .from(schema.schedulesTable)
-      .where(eq(schema.schedulesTable.id, id))
-      .limit(1);
 
-    if (!exists)
-      throw new HTTPException(404, { message: "schedule not found" });
-
-    await db
+    const result = await db
       .delete(schema.schedulesTable)
-      .where(eq(schema.schedulesTable.id, id));
-    return c.json({ message: "Deleted successfully" });
+      .where(eq(schema.schedulesTable.id,id))
+      .returning()
+
+    if(result.length === 0){
+      return c.json({ error: "Schedule not found "}, 404);
+    }
+    return c.json({
+      message: "Deleted successfully",
+      deletedItem: result[0]
+    })
   }
 );
 
